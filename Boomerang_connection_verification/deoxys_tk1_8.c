@@ -45,7 +45,7 @@ typedef __m128i state;
 #define tabsize(t) (sizeof(t)/sizeof((t)[0]))
 
 // Total samples
-#define SAMPLES ((1ULL)<<38)
+#define SAMPLES ((1ULL)<<49)
 // Randomize key for chunks of samples
 #define CHUNK ((1ULL)<<16)
 

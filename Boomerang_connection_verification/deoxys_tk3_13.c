@@ -1,4 +1,4 @@
-// Middle rounds of Deoxys Boomerang
+	// Middle rounds of Deoxys Boomerang
 
 #define _XOPEN_SOURCE 600
 #define _BSD_SOURCE
@@ -45,7 +45,7 @@ typedef __m128i state;
 #define tabsize(t) (sizeof(t)/sizeof((t)[0]))
 
 // Total samples
-#define SAMPLES ((1ULL)<<25)
+#define SAMPLES ((1ULL)<<46)
 // Randomize key for chunks of samples
 #define CHUNK ((1ULL)<<16)
 
