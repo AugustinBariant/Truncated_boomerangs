@@ -9,7 +9,7 @@ Validated:
 - Deoxys_TK3_11R from x3 to x6:
     Out of 2^{32} samples, 100664782 good pairs => p = 2^-5.415016
 
-- Deoxys_TK3_12R from x4 to x7, such that transition y6->x6 pass with probability 1:
+- Deoxys_TK3_12R from x4 to x7 (free y6->x6):
     Out of 2^{46} samples, 187 good pairs => p = 2^-38.453106
 
 - Deoxys_TK2_8R: from x3 to x4 -> no overlapping Sbox: 
@@ -17,7 +17,7 @@ Validated:
 
 Decreased:
 
-- Deoxys_TK3_13R from x5 to x8 (starting from the bottom side though the trail starts from the top side):
+- Deoxys_TK3_13R from x5 to x8, starting from the bottom side though the trail starts from the top side (free y7->x7 for the first pair):
     Out of 2^{46} samples, 106 good pairs => p = 2^-39.272080 (instead of 2^{-38.8})
 
 - Deoxys_TK2_9R: from x3 to x5:
@@ -25,8 +25,8 @@ Decreased:
 
 Increased:
 
-- Deoxys_TK1_8R (by Gaëtan): from x2 to x5:
-    Out of 2^{49} samples, 4 good pairs => p = 2^{-47} (instead of 2^{48}). Limited precision.
+- Deoxys_TK1_8R from x2 to x5 (free y4->x4):
+    Out of 2^{49} samples, 4 good pairs => p = 2^{-47} (instead of 2^{-48}). Limited precision.
 
-- Deoxys_TK2_10R (by Gaëtan): from x3 to x6:
+- Deoxys_TK2_10R from x3 to x6 (free y5->x5):
     Out of 2^40 samples, 198 good pairs => p = 2^{-32.4} (instead of 2^{33})
