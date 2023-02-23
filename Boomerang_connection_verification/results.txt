@@ -1,0 +1,32 @@
+Experimental probabilities verified by experiments, for different versions. All the experiments were conducted from the bottom side (simulating an attack from ciphertext).
+When probabilities are too large, the sample are generated carefully so that the first Sbox transitions (on the bottom trail) pass with probability.
+
+Validated:
+
+- Deoxys_TK3_10R from x3 to x6:
+    Out of 2^{32} samples, 100660619 good pairs => p = 2^-5.415076
+
+- Deoxys_TK3_11R from x3 to x6:
+    Out of 2^{32} samples, 100664782 good pairs => p = 2^-5.415016
+
+- Deoxys_TK3_12R from x4 to x7, such that transition y6->x6 pass with probability 1:
+    Out of 2^{46} samples, 187 good pairs => p = 2^-38.453106
+
+- Deoxys_TK2_8R: from x3 to x4 -> no overlapping Sbox: 
+    Out of 2^{25} samples, 2^{25} good pairs => p = 1
+
+Decreased:
+
+- Deoxys_TK3_13R from x5 to x8 (starting from the bottom side though the trail starts from the top side):
+    Out of 2^{46} samples, 106 good pairs => p = 2^-39.272080 (instead of 2^{-38.8})
+
+- Deoxys_TK2_9R: from x3 to x5:
+    Out of 2^{32} samples, 786015 good pairs => p = 2^-12.415803 (instead of 2^{-12})
+
+Increased:
+
+- Deoxys_TK1_8R (by Gaëtan): from x2 to x5:
+    Out of 2^{49} samples, 4 good pairs => p = 2^{-47} (instead of 2^{48}). Limited precision.
+
+- Deoxys_TK2_10R (by Gaëtan): from x3 to x6:
+    Out of 2^40 samples, 198 good pairs => p = 2^{-32.4} (instead of 2^{33})
