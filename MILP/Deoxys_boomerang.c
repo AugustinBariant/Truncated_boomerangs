@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 // In the code, the states are denoted differently from the paper, as:
 // xt{0-15} ---ATK---->   yt{0-15}   ----SB---->   zt{0-15}   ---SRMC--->   xt{16-31} ...     For truncated states
@@ -602,7 +604,7 @@ int main(int argc, char** argv){
 		ru = atoi(argv[1]);
 		rl = atoi(argv[2]);
 	}else{
-		printf("Usage: ./executable U L fP model opt \nU is the number of upper rounds, L of lower rounds\nfP is a boolean equal to 1 iff the trail starts from plaintext\nmodel is the number of tweakey chunks controlled by the attacker\nopt enable the equal states optimisation\n");	
+		printf("Usage: %s U L fP model opt \nU is the number of upper rounds, L of lower rounds\nfP is a boolean equal to 1 iff the trail starts from plaintext\nmodel is the number of tweakey chunks controlled by the attacker\nopt enable the equal states optimisation\n", argv[0]);
 		return 0;
 		}
 	if(argc>3){
@@ -619,13 +621,14 @@ int main(int argc, char** argv){
 	if(!allowEqualStates){
 		s = "";
 	}
-	
+
+	mkdir("output", 0777);
 	if(model){
-		if(fromPlaintext) sprintf(filename,"LPFiles/Deoxys_TK%d%s_boomerang_fromPlaintext_%dR_%dR.lp",model,s,ru,rl);
-		if(!fromPlaintext) sprintf(filename,"LPFiles/Deoxys_TK%d%s_boomerang_fromCiphertext_%dR_%dR.lp",model,s,ru,rl);
+		if(fromPlaintext) sprintf(filename,"output/Deoxys_TK%d%s_boomerang_fromPlaintext_%dR_%dR.lp",model,s,ru,rl);
+		if(!fromPlaintext) sprintf(filename,"output/Deoxys_TK%d%s_boomerang_fromCiphertext_%dR_%dR.lp",model,s,ru,rl);
 	}else{
-		if(fromPlaintext) sprintf(filename,"LPFiles/Deoxys_SK%s_boomerang_fromPlaintext_%dR_%dR.lp",s,ru,rl);
-		if(!fromPlaintext) sprintf(filename,"LPFiles/Deoxys_SK%s_boomerang_fromCiphertext_%dR_%dR.lp",s,ru,rl);
+		if(fromPlaintext) sprintf(filename,"output/Deoxys_SK%s_boomerang_fromPlaintext_%dR_%dR.lp",s,ru,rl);
+		if(!fromPlaintext) sprintf(filename,"output/Deoxys_SK%s_boomerang_fromCiphertext_%dR_%dR.lp",s,ru,rl);
 	}
 	
 	
