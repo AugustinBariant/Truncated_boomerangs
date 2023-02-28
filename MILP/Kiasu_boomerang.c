@@ -584,7 +584,7 @@ int main(int argc, char** argv){
 		ru = atoi(argv[1]);
 		rl = atoi(argv[2]);
 	}else{
-		printf("Usage: ./executable U L fP opt \nU is the number of upper rounds, L of lower rounds\nfP is a boolean equal to 1 iff the trail starts from plaintext\nopt enable the equal states optimisation\n");	
+	  printf("Usage: %s U L fP opt \nU is the number of upper rounds, L of lower rounds\nfP is a boolean equal to 1 iff the trail starts from plaintext\nopt enable the equal states optimisation\n", argv[0]);
 		return 0;
 		}
 	if(argc>3){
@@ -599,8 +599,9 @@ int main(int argc, char** argv){
 		s = "";
 	}
 	
-	if(fromPlaintext) sprintf(filename,"LPFiles/Kiasu%s_boomerang_fromPlaintext_%dR_%dR.lp",s,ru,rl);
-  	if(!fromPlaintext) sprintf(filename,"LPFiles/Kiasu%s_boomerang_fromCiphertext_%dR_%dR.lp",s,ru,rl);
+	mkdir("output", 0777);
+	if(fromPlaintext) sprintf(filename,"output/Kiasu%s_boomerang_fromPlaintext_%dR_%dR.lp",s,ru,rl);
+  	if(!fromPlaintext) sprintf(filename,"output/Kiasu%s_boomerang_fromCiphertext_%dR_%dR.lp",s,ru,rl);
 
 	
 	
