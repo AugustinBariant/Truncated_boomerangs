@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 from os import error
 from pickle import SHORT_BINSTRING
 import sys
@@ -559,24 +561,6 @@ def printLineifInDic(Name, key):
         print("\\path (0,"+str(i)+") node[anchor=west] {{\scriptsize "+ Name + ": }$"+str(dic[key]) + "$};")
         i-=2
 
-
-print("""
-\\begin{scope}[yshift=-45cm,xshift=35cm]
-\\path (0,0) node[anchor=west,text width=3cm] {\\scriptsize  \\begin{align*}
-  \\cev{q} &= 2^{-46} &
-  \\vec{p} &= 2^{-28} \\\\
-  r &= 2^{-12} &
-  \\vec{q} &= 2^{-6} \\\\
-  |\mathcal{D}_{out}^{up}| &= 1 &
-  p_b &= 2^{-108} \\\\
-  p_{\\$} &= 2^{-88} &
-  \\kappa &= 40 \\\\
-  l &= 2^{-32} &
-  \\tilde{\\sigma} &= 2^{52} \\\\
-  \\mu &= 1 &  S &= 2^{54}\\\\
-  D = T &= 2^{55} & M &= 2^{55}
-\\end{align*}};
-\\end{scope}""")
 
 print("\\path (current bounding box.north east) +(5,5);")
 print("\\path (current bounding box.south west) +(-5,-5);")
