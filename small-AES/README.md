@@ -1,4 +1,4 @@
-Small-AES: Practical attack on a 64-bit AES
+Small-AES: Practical attacks on a 64-bit AES
 ======================================================================================
 
 This directory contains an implementation of a small AES with 4-bit SBoxes,
