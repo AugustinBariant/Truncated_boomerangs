@@ -2,7 +2,7 @@
 
 
 There are several steps to generate parameters for a boomerang attack:
-1. Generate the MILP model with `Deoxys_boomerang` or `Kiasu_boomerang`
+1. Generate the MILP model with `Truncated_boomerang_MILP`
 2. Solve the model (with Gurobi)
 3. (optional) Generate a figure to visualize the trail using `make_figure`
 4. Instanciate the differences.  The requires some manual work, starting from `Instantiate_diff.sage`
@@ -12,21 +12,17 @@ There are several steps to generate parameters for a boomerang attack:
 
 The provided `Makefile` should automate part of the work:
 - running `make build` or `make` will compile the programs
-- running `make test` will run the search for a 6-round bommerang attack against AES and generate a PDF figure
+- running `make test` will run the search for a 6-round bommerang attack against AES and generate a PDF figure. Warning: gurobi takes more than ten minutes to solve the model.
 - for a given set of parameters, you can run step 1 manually (for instance `Deoxys_boomerang 5 6 0 3` for an attack against 11-round Deoxys in the RTK3 model), and run `make pdf` to run steps 2 and 3.
 
 ## MILP model generation
 
 To generate the MILP model run the executable:
 ```sh
-./Deoxys_boomerang ⟨U⟩ ⟨L⟩ ⟨fromPt⟩ ⟨i⟩ ⟨opt⟩
-```
-or
-```sh
-./Kiasu_boomerang ⟨U⟩ ⟨L⟩ ⟨fromPt⟩ ⟨opt⟩
+./Truncated_boomerang_MILP ⟨isKiasu⟩ ⟨U⟩ ⟨L⟩ ⟨fromPt⟩ ⟨i⟩
 ```
 
-This will generate the MILP file for the search of a boomerang trail with ⟨U⟩ upper rounds, ⟨L⟩ lower rounds, starting from the Plaintext iff ⟨fromPT⟩≠0, in the RTK⟨i⟩ model (for Deoxys), and with equal states optimisation disabled iff ⟨opt⟩=0. The `.lp` file is generated in the `output/` folder. In total, the boomerang trail will reach ⟨U⟩+⟨L⟩ rounds (the upper and lower trails have each 1 extra round in the middle, which overlaps with the other's main trail).
+This will generate the MILP file for the search of a boomerang trail with ⟨U⟩ upper rounds, ⟨L⟩ lower rounds, starting from the Plaintext iff ⟨fromPT⟩≠0, with Kiasu tweakey schedule if ⟨isKiasu⟩≠0 or Deoxys tweakey schedule in the RTK⟨i⟩ model if ⟨isKiasu⟩=0 (the parameter ⟨i⟩ is ignored if ⟨isKiasu⟩≠0). The `.lp` file is generated in the `output/` folder. In total, the boomerang trail will reach ⟨U⟩+⟨L⟩ rounds (the upper and lower trails have each 1 extra round in the middle, which overlaps with the other's main trail).
 
 
 ## MILP solving

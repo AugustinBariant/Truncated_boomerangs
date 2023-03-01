@@ -1,6 +1,6 @@
 CFLAGS= -Wall -Wextra -O3 -g -fopenmp -std=c99
 
-BIN = Deoxys_boomerang Kiasu_boomerang
+BIN = Truncated_boomerang_MILP
 LPFILES := $(wildcard output/*.lp)
 SOLFILES := $(patsubst %.lp,%.sol,${LPFILES})
 TEXFILES := $(patsubst %.lp,%.tex,${LPFILES})
@@ -13,7 +13,7 @@ gurobi: ${SOLFILES}
 pdf: ${PDFFILES}
 
 test: build
-	./Deoxys_boomerang 3 3 0 0
+	./Truncated_boomerang_MILP 0 3 3 1 0
 	$(MAKE) pdf
 
 %.sol: %.lp

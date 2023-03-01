@@ -1,7 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
-// For information on the variable names, check out the first lines of Deoxys_boomerang_truncated_all.c
+// In this code, the states are denoted differently from the paper, as:
+// xt{0-15} ---ATK---->   yt{0-15}   ----SB---->   zt{0-15}   ---SRMC--->   xt{16-31} ...     For truncated states
+//  x{0-15} ---ATK---->    y{0-15}  (----SB---->)   y{0-15}   ---SRMC--->    x{16-31}         For active states, with x,y,z >= xt,yt,zt                                                       
+//             |^|                                           								  For equal states, remplace the t of truncated states by an e, with xt,yt,zt >= xe,ye,ze                                                       
+//			   | | 
+//           tk{0,15}
+// State denoted as follows:
+//   ( 0 4 8  12 )
+//   ( 1 5 9  13 )
+//   ( 2 6 10 14 )
+//   ( 3 7 11 15 )
+// Add u before the variable name for upper trail and l for the lower trail.
+
+
+// TODO: change the complexity of the objective function: equal <-> fixed transition cost 2^7 and not 2^8.
 int i,j,r;
 
 int rl,ru;
@@ -49,9 +65,15 @@ void AddTweakeyL(int a[4][4], int tk[4][4]){
 	// 1   1   1    1  invalid
 	for(j=0; j < 4; j++){
 		for(i = 0; i < 4; i++){
+			// Activeness constraints: ltk = lx + ly
 			fprintf(fi,"  lx%i + ltk%i - ly%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
 			fprintf(fi,"  lx%i - ltk%i + ly%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
 			fprintf(fi,"- lx%i + ltk%i + ly%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
+
+			// Truncated contraints: ltkt = lxt + lyt
+			fprintf(fi,"  lxt%i + ltkt%i - lyt%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
+			fprintf(fi,"  lxt%i - ltkt%i + lyt%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
+			fprintf(fi,"- lxt%i + ltkt%i + lyt%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
 			
 			fprintf(fi,"  lx%i + ltk%i + ly%i - lcancel%i >= 0\n" ,a[i][j],tk[i][j],a[i][j],lcancel);
 			fprintf(fi,"  lx%i - ltk%i - ly%i - lcancel%i >= -2\n",a[i][j],tk[i][j],a[i][j],lcancel);
@@ -60,13 +82,34 @@ void AddTweakeyL(int a[4][4], int tk[4][4]){
 			fprintf(fi,"- lx%i - ltk%i - ly%i - lcancel%i >= -3\n",a[i][j],tk[i][j],a[i][j],lcancel);
 			lcancel++;
 
-			// Truncated constraints
-			// 2. xt <=> yt 
-			// xe = ye
+			// If the key is truncated, then lxe + lye <= 1
+			fprintf(fi,"lxe%i + lye%i + ltkt%i <= 2\n",a[i][j],a[i][j],tk[i][j]);
+			fprintf(fi,"lxe%i - lyt%i <= 0\n",a[i][j],a[i][j]);
+			fprintf(fi,"- lxt%i + lye%i <= 0\n",a[i][j],a[i][j]);
+			// If the key is not truncated, then lxe = lye
+			fprintf(fi,"lxe%i - lye%i + ltkt%i >= 0\n",a[i][j],a[i][j],tk[i][j]);
+			fprintf(fi,"- lxe%i + lye%i + ltkt%i >= 0\n",a[i][j],a[i][j],tk[i][j]);
 
-			fprintf(fi,"lxt%i - lyt%i = 0\n",a[i][j],a[i][j]);
-			fprintf(fi,"lxe%i - lye%i = 0\n",a[i][j],a[i][j]);
+			//Cases to capture: truncated -> active , truncated -> inactive, active -> truncated, truncated ->  equal, equal -> truncated, inactive -> truncated
 
+			fprintf(fi,"lxt%i + ly%i - lyt%i - latkta%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"lxt%i - lxe%i + lye%i - latkte%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j]);	
+			fprintf(fi,"lxt%i - ly%i - latkti%i <= 0\n",a[i][j],a[i][j],a[i][j]);
+
+			fprintf(fi,"lxe%i + lyt%i - lye%i - latket%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"lx%i - lxt%i + lyt%i - latkat%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"- lx%i + lyt%i - latkit%i <= 0\n",a[i][j],a[i][j],a[i][j]);
+
+			fprintf(fi,"lxt%i - lxe%i + lyt%i - lye%i - latktt%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"lxe%i + lye%i - latkee%i <= 1\n",a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"- lx%i - ly%i - latkii%i <= -1\n",a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"lx%i - lxt%i - ly%i - latkai%i <= 0\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"lx%i - lxt%i + ly%i - lyt%i - latkaa%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"- lx%i + ly%i - lyt%i - latkia%i <= 0\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+
+			fprintf(fi, "latktt%i + latkta%i + latkte%i + latkti%i + latkee%i + latket%i + latkat%i + latkit%i + latkii%i + latkai%i + latkaa%i + latkia%i = 1\n",a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j]);
+
+			
 		}
 	}
 }
@@ -98,6 +141,11 @@ void AddTweakeyU(int a[4][4], int tk[4][4]){
 			fprintf(fi,"  ux%i + utk%i - uy%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
 			fprintf(fi,"  ux%i - utk%i + uy%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
 			fprintf(fi,"- ux%i + utk%i + uy%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
+
+			// Truncated contraints: utkt = uxt + uyt
+			fprintf(fi,"  uxt%i + utkt%i - uyt%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
+			fprintf(fi,"  uxt%i - utkt%i + uyt%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
+			fprintf(fi,"- uxt%i + utkt%i + uyt%i >= 0\n",a[i][j],tk[i][j],a[i][j]);
 			
 			fprintf(fi,"  ux%i + utk%i + uy%i - ucancel%i >= 0\n" ,a[i][j],tk[i][j],a[i][j],ucancel);
 			fprintf(fi,"  ux%i - utk%i - uy%i - ucancel%i >= -2\n",a[i][j],tk[i][j],a[i][j],ucancel);
@@ -106,26 +154,54 @@ void AddTweakeyU(int a[4][4], int tk[4][4]){
 			fprintf(fi,"- ux%i - utk%i - uy%i - ucancel%i >= -3\n",a[i][j],tk[i][j],a[i][j],ucancel);
 			ucancel++;
 
-			// Truncated constraints
-			// 2. xt <=> yt 
-			// xe = ye
+			// If the key is truncated, then uxe + uye <= 1 and if uxe =1, then uyt = 1 & conversely
+			fprintf(fi,"uxe%i + uye%i + utkt%i <= 2\n",a[i][j],a[i][j],tk[i][j]);
 
-			fprintf(fi,"uxt%i - uyt%i = 0\n",a[i][j],a[i][j]);
-			fprintf(fi,"uxe%i - uye%i = 0\n",a[i][j],a[i][j]);
+			fprintf(fi,"uxe%i - uyt%i <= 0\n",a[i][j],a[i][j]);
+			fprintf(fi,"- uxt%i + uye%i <= 0\n",a[i][j],a[i][j]);
 
+			// If the key is not truncated, then uxe = uye
+			fprintf(fi,"uxe%i - uye%i + utkt%i >= 0\n",a[i][j],a[i][j],tk[i][j]);
+			fprintf(fi,"- uxe%i + uye%i + utkt%i >= 0\n",a[i][j],a[i][j],tk[i][j]);
+
+			
+
+			//Cases to capture: truncated -> active , active -> truncated, truncated ->  equal, equal -> truncated
+
+			fprintf(fi,"uxt%i + uy%i - uyt%i - uatkta%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"uxt%i - uxe%i + uye%i - uatkte%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j]);	
+			fprintf(fi,"uxt%i - uy%i - uatkti%i <= 0\n",a[i][j],a[i][j],a[i][j]);
+
+			fprintf(fi,"uxe%i + uyt%i - uye%i - uatket%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"ux%i - uxt%i + uyt%i - uatkat%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"- ux%i + uyt%i - uatkit%i <= 0\n",a[i][j],a[i][j],a[i][j]);
+
+			fprintf(fi,"uxt%i - uxe%i + uyt%i - uye%i - uatktt%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"uxe%i + uye%i - uatkee%i <= 1\n",a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"- ux%i - uy%i - uatkii%i <= -1\n",a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"ux%i - uxt%i - uy%i - uatkai%i <= 0\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"ux%i - uxt%i + uy%i - uyt%i - uatkaa%i <= 1\n",a[i][j],a[i][j],a[i][j],a[i][j],a[i][j]);
+			fprintf(fi,"- ux%i + uy%i - uyt%i - uatkia%i <= 0\n",a[i][j],a[i][j],a[i][j],a[i][j]);
+
+			fprintf(fi, "uatktt%i + uatkta%i + uatkte%i + uatkti%i + uatkee%i + uatket%i + uatkat%i + uatkit%i + uatkii%i + uatkai%i + uatkaa%i + uatkia%i = 1\n",a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j],a[i][j]);
 		}
 	}
 }
 
 void ShuffleKey(int tk[4][4]) {
-	int tmp[16];
 	for(i = 0; i < 4; i++)
 		for(j=0; j < 4; j++)
 			tk[i][j]+=16;
 }
 
-int NextPosition(int targetindex) {
-	return targetindex;
+int NextPosition(int targetindex,char isKiasu) {
+    if (isKiasu) return targetindex;
+	for(j=0; j<16; j++){
+		if(KEYROTATE[j]==targetindex){
+			break;
+		}
+	}
+	return j;
 }
 
 void ShiftRows(int a[4][4]) {
@@ -373,11 +449,52 @@ void MixColumnU(int a[4][4]) {
 }
 
 void AddTweakeyS(int a[4][4]){
+	// Switch
+	// uatktanoswitch = uatkta & not uxswitched
+	// uatktenoswitch = uatkte & not uxswitched
+	// uatktinoswitch = uatkti & not uxswitched
+	// uatkatnoswitch = uatkat & not uxswitched
+	// uatketnoswitch = uatket & not uxswitched
+	// uatkitnoswitch = uatkit & not uxswitched
+	// Same for lower trail
 	for(j=0; j < 4; j++){
 		for(i = 0; i < 4; i++){
-			// ATK: doesn't change anything
-			fprintf(fi,"  uxswitched%i - uyswitched%i = 0\n",a[i][j],a[i][j]);
-			fprintf(fi,"  lxswitched%i - lyswitched%i = 0\n",a[i][j],a[i][j]);	
+			int l = a[i][j];
+			int u = a[i][j] + 16*(ru-1);
+			// ATK: doesn't change the switched state
+			fprintf(fi,"  uxswitched%i - uyswitched%i = 0\n",l,l);
+			fprintf(fi,"  lxswitched%i - lyswitched%i = 0\n",l,l);	
+
+			fprintf(fi,"uatktanoswitch%i - uatkta%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatktenoswitch%i - uatkte%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatktinoswitch%i - uatkti%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatkatnoswitch%i - uatkat%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatketnoswitch%i - uatket%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatkitnoswitch%i - uatkit%i + uyswitched%i >= 0\n",l,u,l);	
+
+			fprintf(fi,"uatkttnoswitch%i - uatktt%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatkeenoswitch%i - uatkee%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatkainoswitch%i - uatkai%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatkaanoswitch%i - uatkaa%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatkianoswitch%i - uatkia%i + uyswitched%i >= 0\n",l,u,l);	
+			fprintf(fi,"uatkiinoswitch%i - uatkii%i + uyswitched%i >= 0\n",l,u,l);	
+
+			fprintf(fi,"latktanoswitch%i - latkta%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latktenoswitch%i - latkte%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latktinoswitch%i - latkti%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latkatnoswitch%i - latkat%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latketnoswitch%i - latket%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latkitnoswitch%i - latkit%i + lyswitched%i >= 0\n",l,l,l);	
+
+			fprintf(fi,"latkttnoswitch%i - latktt%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latkeenoswitch%i - latkee%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latkainoswitch%i - latkai%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latkaanoswitch%i - latkaa%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latkianoswitch%i - latkia%i + lyswitched%i >= 0\n",l,l,l);	
+			fprintf(fi,"latkiinoswitch%i - latkii%i + lyswitched%i >= 0\n",l,l,l);	
+
+			fprintf(fi, "uatktanoswitch%i + uatktenoswitch%i + uatktinoswitch%i + uatkatnoswitch%i + uatketnoswitch%i + uatkitnoswitch%i + uatkttnoswitch%i + uatkeenoswitch%i + uatkainoswitch%i + uatkaanoswitch%i + uatkianoswitch%i + uatkiinoswitch%i + latktanoswitch%i + latktenoswitch%i + latktinoswitch%i + latkatnoswitch%i + latketnoswitch%i + latkitnoswitch%i + latkttnoswitch%i + latkeenoswitch%i + latkainoswitch%i + latkaanoswitch%i + latkianoswitch%i + latkiinoswitch%i = 1\n",l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l);
+			
 		}
 	}
 }
@@ -406,57 +523,58 @@ void SubBytesS(int a[4][4]){
 			//
 			// Therefore, we will create variables which equal 1 in each of those cases only.
 			//
-			// uyswitched uzswitched uy uyt uzt uye uze ly lyt lzt lye lze  variable     P_fromPlaintext  P_fromCiphertext  Impossible
-			// *          *           0  0   0   0   0   0  0   0   0   0   nanaswitch   1                1
-			// 1          0           *  *   *   *   *   *  *   *   *   *   ---          ---              ---                yes
-			// 0          0           1  0   0   0   0   *  *   *   *   *   uaanoswitch  2^{-12}          2^{-12} 
-			// 0          0           1  0   1   0   0   *  *   *   *   *   uatnoswitch  2^{-8}           1
-			// 0          0           1  0   1   0   1   *  *   *   *   *   uaenoswitch  2^{-7}           2^{-7}
-			// 0          0           1  1   0   0   0   *  *   *   *   *   utanoswitch  2^{-8}           2^{-16}
-			// 0          0           1  1   1   0   0   *  *   *   *   *   uttnoswitch  1                1 
-			// 0          0           1  1   1   0   1   *  *   *   *   *   utenoswitch  1                2^{-8}
-			// 0          0           1  1   0   1   0   *  *   *   *   *   ueanoswitch  2^{-15}          2^{-14}      NEW
-			// 0          0           1  1   0   1   1   *  *   *   *   *   uetnoswitch  2^{-8}           1            NEW
-			// 0          0           1  1   1   1   1   *  *   *   *   *   ueenoswitch  2^{-7}           2^{-7}       NEW
-			// 0          0           1  1   *   1   *   *  *   *   *   *   uyenoswitch  ---              ---          OLD   yes 
-			// 1          1           *  *   *   *   *   1  0   0   0   0   laanoswitch  2^{-12}          2^{-12} 
-			// 1          1           *  *   *   *   *   1  0   1   0   0   latnoswitch  2^{-16}          2^{-8}  
-			// 1          1           *  *   *   *   *   1  1   1   1   1   leenoswitch  2^{-7}           2^{-7}       NEW  
-			// 1          1           *  *   *   *   *   1  1   1   0   1   ltenoswitch  1                2^{-8}       NEW
-			// 1          1           *  *   *   *   *   1  0   1   0   1   laenoswitch  2^{-14}          2^{-15}      NEW
-			// 1          1           *  *   *   *   *   1  *   1   *   1   lzenoswitch  ---              ---          OLD   yes
-			// 1          1           *  *   *   *   *   1  1   0   0   0   ltanoswitch  1                2^{-8}
-			// 1          1           *  *   *   *   *   1  1   0   1   0   leanoswitch  2^{-7}           2^{-7}
-			// 1          1           *  *   *   *   *   1  1   1   0   0   lttnoswitch  1                1
-			// 1          1           *  *   *   *   *   1  1   1   1   0   letnoswitch  2^{-8}           1		
-			// 0          1           1  0   *   0   *   0  *   0   *   0   anaswitch    1                1
-			// 0          1           1  1   *   0   *   0  *   0   *   0   tnaswitch    1                2^{-8}
-			// 0          1           1  1   *   1   *   0  *   0   *   0   enaswitch    1                1
-			// 0          1           0  0   *   0   *   1  *   0   *   0   naaswitch    1                1
-			// 0          1           0  0   *   0   *   1  *   1   *   0   natswitch    2^{-8}           1 
-			// 0          1           0  0   *   0   *   1  *   1   *   1   naeswitch    1                1
-			// 0          1           1  0   *   0   *   1  *   0   *   0   aaswitch     2^{-6}           2^{-6}
-			// 0          1           1  0   *   0   *   1  *   1   *   0   atswitch     2^{-8}           1
-			// 0          1           1  0   *   0   *   1  *   1   *   1   aeswitch     2^{-8}           2^{-8}
-			// 0          1           1  1   *   0   *   1  *   0   *   0   taswitch     1                2^{-8}
-			// 0          1           1  1   *   0   *   1  *   1   *   0   ttswitch     1                1
-			// 0          1           1  1   *   0   *   1  *   1   *   1   teswitch     1                2^{-8}
-			// 0          1           1  1   *   1   *   1  *   0   *   0   easwitch     2^{-8}           2^{-8}
-			// 0          1           1  1   *   1   *   1  *   1   *   0   etswitch     2^{-8}           1
-			// 0          1           1  1   *   1   *   1  *   1   *   1   eeswitch     2^{-8}           2^{-8}
+			// uyswitched uzswitched uy uyt uzt uye uze ly lyt lzt lye lze  variable       P_fromPlaintext  P_fromCiphertext  Impossible
+			// 1          0           *  *   *   *   *   *  *   *   *   *   ---            ---              ---                yes
+			// 0          0           0  0   0   0   0   *  *   *   *   *   uiinoswitch    1                1 
+			// 0          0           1  0   0   0   0   *  *   *   *   *   uaanoswitch    2^{-12}          2^{-12} 
+			// 0          0           1  0   1   0   0   *  *   *   *   *   uatnoswitch    2^{-8}           1
+			// 0          0           1  0   1   0   1   *  *   *   *   *   uaenoswitch    2^{-7}           2^{-7}
+			// 0          0           1  1   0   0   0   *  *   *   *   *   utanoswitch    2^{-8}           2^{-16}
+			// 0          0           1  1   1   0   0   *  *   *   *   *   uttnoswitch    1                1 
+			// 0          0           1  1   1   0   1   *  *   *   *   *   utenoswitch    1                2^{-8}
+			// 0          0           1  1   0   1   0   *  *   *   *   *   ueanoswitch    2^{-15}          2^{-14}      
+			// 0          0           1  1   0   1   1   *  *   *   *   *   uetnoswitch    2^{-8}           1            
+			// 0          0           1  1   1   1   1   *  *   *   *   *   ueenoswitch    2^{-7}           2^{-7}      
+			// 1          1           *  *   *   *   *   0  0   0   0   0   liinoswitch    1                1 
+			// 1          1           *  *   *   *   *   1  0   0   0   0   laanoswitch    2^{-12}          2^{-12} 
+			// 1          1           *  *   *   *   *   1  0   1   0   0   latnoswitch    2^{-16}          2^{-8}  
+			// 1          1           *  *   *   *   *   1  1   1   1   1   leenoswitch    2^{-7}           2^{-7}         
+			// 1          1           *  *   *   *   *   1  1   1   0   1   ltenoswitch    1                2^{-8}       
+			// 1          1           *  *   *   *   *   1  0   1   0   1   laenoswitch    2^{-14}          2^{-15}      
+			// 1          1           *  *   *   *   *   1  1   0   0   0   ltanoswitch    1                2^{-8}
+			// 1          1           *  *   *   *   *   1  1   0   1   0   leanoswitch    2^{-7}           2^{-7}
+			// 1          1           *  *   *   *   *   1  1   1   0   0   lttnoswitch    1                1
+			// 1          1           *  *   *   *   *   1  1   1   1   0   letnoswitch    2^{-8}           1		
+			// 0          1           0  0   *   0   *   0  *   0   *   0   iiswitch       1                1
+			// 0          1           1  0   *   0   *   0  *   0   *   0   aiswitch       1                1
+			// 0          1           1  1   *   0   *   0  *   0   *   0   tiswitch       1                2^{-8}
+			// 0          1           1  1   *   1   *   0  *   0   *   0   eiswitch       1                1
+			// 0          1           0  0   *   0   *   1  *   0   *   0   iaswitch       1                1
+			// 0          1           0  0   *   0   *   1  *   1   *   0   itswitch       2^{-8}           1 
+			// 0          1           0  0   *   0   *   1  *   1   *   1   ieswitch       1                1
+			// 0          1           1  0   *   0   *   1  *   0   *   0   aaswitch       2^{-6}           2^{-6}
+			// 0          1           1  0   *   0   *   1  *   1   *   0   atswitch       2^{-8}           1
+			// 0          1           1  0   *   0   *   1  *   1   *   1   aeswitch       2^{-8}           2^{-8}
+			// 0          1           1  1   *   0   *   1  *   0   *   0   taswitch       1                2^{-8}
+			// 0          1           1  1   *   0   *   1  *   1   *   0   ttswitch       1                1
+			// 0          1           1  1   *   0   *   1  *   1   *   1   teswitch       1                2^{-8}
+			// 0          1           1  1   *   1   *   1  *   0   *   0   easwitch       2^{-8}           2^{-8}
+			// 0          1           1  1   *   1   *   1  *   1   *   0   etswitch       2^{-8}           1
+			// 0          1           1  1   *   1   *   1  *   1   *   1   eeswitch       2^{-8}           2^{-8}
   
 
 
 			// The switch can not be done in the wrong way
 			fprintf(fi,"uyswitched%i - uzswitched%i <= 0\n",l,l);
 			       
-			fprintf(fi,"nanaswitch%i + uaanoswitch%i + uatnoswitch%i + uaenoswitch%i + utanoswitch%i + uttnoswitch%i + utenoswitch%i + uyenoswitch%i + laanoswitch%i + latnoswitch%i + lzenoswitch%i + ltanoswitch%i + leanoswitch%i + lttnoswitch%i + letnoswitch%i + anaswitch%i + tnaswitch%i + enaswitch%i + naaswitch%i + natswitch%i + naeswitch%i + aaswitch%i + atswitch%i + aeswitch%i + taswitch%i + ttswitch%i + teswitch%i + easwitch%i + etswitch%i + eeswitch%i = 1\n",l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l);
+			fprintf(fi,"uiinoswitch%i + uaanoswitch%i + uatnoswitch%i + uetnoswitch%i + uaenoswitch%i + utanoswitch%i + uttnoswitch%i + utenoswitch%i + ueenoswitch%i + ueanoswitch%i + liinoswitch%i + laanoswitch%i + latnoswitch%i + ltanoswitch%i + leanoswitch%i + lttnoswitch%i + laenoswitch%i + letnoswitch%i + ltenoswitch%i + leenoswitch%i + iiswitch%i + aiswitch%i + tiswitch%i + eiswitch%i + iaswitch%i + itswitch%i + ieswitch%i + aaswitch%i + atswitch%i + aeswitch%i + taswitch%i + ttswitch%i + teswitch%i + easwitch%i + etswitch%i + eeswitch%i = 1\n",l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l,l);
 
-			//nanaswitch
-			fprintf(fi,"nanaswitch%i + uy%i + ly%i >= 1\n",l,u,l);
+			
 
 			//upper noswitch
 
+			//uiinoswitch
+			fprintf(fi,"uiinoswitch%i + uyswitched%i + uzswitched%i + uy%i >= 1\n",l,l,l,u);
 			//uaanoswitch
 			fprintf(fi,"uaanoswitch%i + uyswitched%i + uzswitched%i - uaa%i >= 0\n",l,l,l,u);
 			//uatnoswitch
@@ -478,6 +596,8 @@ void SubBytesS(int a[4][4]){
 
 			//lower noswitch
 
+			//uiinoswitch
+			fprintf(fi,"liinoswitch%i + lyswitched%i + lzswitched%i + ly%i >= 1\n",l,l,l,l);
 			//laanoswitch
 			fprintf(fi,"laanoswitch%i + lyswitched%i + lzswitched%i - laa%i >= 0\n",l,l,l,l);
             //latnoswitch
@@ -499,18 +619,20 @@ void SubBytesS(int a[4][4]){
 
 			// switch active: add uyswitched + lzswitched to the equation >= 0
 
-			//anaswitch
-			fprintf(fi,"anaswitch%i + uyswitched%i + lzswitched%i + ly%i - uy%i + uyt%i >= 0\n",l,l,l,l,u,u);
-			//tnaswitch
-			fprintf(fi,"tnaswitch%i + uyswitched%i + lzswitched%i + ly%i - uyt%i + uye%i >= 0\n",l,l,l,l,u,u);
-			//enaswitch
-			fprintf(fi,"enaswitch%i + uyswitched%i + lzswitched%i + ly%i - uye%i >= 0\n",l,l,l,l,u);
-			//naaswitch
-			fprintf(fi,"naaswitch%i + uyswitched%i + lzswitched%i - ly%i + lzt%i + uy%i >= 0\n",l,l,l,l,l,u);
-			//natswitch
-			fprintf(fi,"natswitch%i + uyswitched%i + lzswitched%i - lzt%i + lze%i + uy%i >= 0\n",l,l,l,l,l,u);
-			//naeswitch
-			fprintf(fi,"naeswitch%i + uyswitched%i + lzswitched%i - lze%i + uy%i >= 0\n",l,l,l,l,u);
+			//iiswitch
+			fprintf(fi,"iiswitch%i + uyswitched%i + lzswitched%i + ly%i + uy%i >= 1\n",l,l,l,l,u);
+			//aiswitch
+			fprintf(fi,"aiswitch%i + uyswitched%i + lzswitched%i + ly%i - uy%i + uyt%i >= 0\n",l,l,l,l,u,u);
+			//tiswitch
+			fprintf(fi,"tiswitch%i + uyswitched%i + lzswitched%i + ly%i - uyt%i + uye%i >= 0\n",l,l,l,l,u,u);
+			//eiswitch
+			fprintf(fi,"eiswitch%i + uyswitched%i + lzswitched%i + ly%i - uye%i >= 0\n",l,l,l,l,u);
+			//iaswitch
+			fprintf(fi,"iaswitch%i + uyswitched%i + lzswitched%i - ly%i + lzt%i + uy%i >= 0\n",l,l,l,l,l,u);
+			//itswitch
+			fprintf(fi,"itswitch%i + uyswitched%i + lzswitched%i - lzt%i + lze%i + uy%i >= 0\n",l,l,l,l,l,u);
+			//ieswitch
+			fprintf(fi,"ieswitch%i + uyswitched%i + lzswitched%i - lze%i + uy%i >= 0\n",l,l,l,l,u);
 			//aaswitch 
 			fprintf(fi,"aaswitch%i + uyswitched%i + lzswitched%i - ly%i + lzt%i - uy%i + uyt%i >= -1\n",l,l,l,l,l,u,u);
 			//atswitch 
@@ -569,50 +691,56 @@ int main(int argc, char** argv){
 	int tk[4][4]; /* the bytes of the TWEAKEY state */
 	int a[4][4]; /* the bytes of the AES state */
 	int tmpindex;	
-	ru = 5;
+	char isKiasu = 0;
+    ru = 5;
 	rl = 5;
 	// fromPlaintext = 1 if the trail starts from the plaintext and 0 if it starts from the ciphertext
 	char fromPlaintext = 0;
 
+	// if model=3, we are in the TK3 model, if model = 0, in the SK model etc.. (model is in {0,1,2,3})
+	char model = 3;
 
-	// allowEqualStates enables the optimisation with equal states.
-	char allowEqualStates=1;
+	// truncKey enables the optimisation with truncated keys; For experimental purposes. Always set it to False
+	char allowTruncKey=0;
 
 	//upper trails and lower trails of respectively ru and rl rounds.
 	//In order to come up with such trails, we create differential trails of length rl+1 and ru+1
-	if(argc>2){
-		ru = atoi(argv[1]);
-		rl = atoi(argv[2]);
+	if(argc>4){
+        isKiasu = atoi(argv[1]);
+		ru = atoi(argv[2]);
+		rl = atoi(argv[3]);
 	}else{
-	  printf("Usage: %s U L fP opt \nU is the number of upper rounds, L of lower rounds\nfP is a boolean equal to 1 iff the trail starts from plaintext\nopt enable the equal states optimisation\n", argv[0]);
+		printf("Usage: %s isKiasu? U L fP model\nisKiasu? is a boolean equal to 1 if the Kiasu model is accounted. In this case, the value of model is not taken into account.\nU is the number of upper rounds, L of lower rounds\nfP is a boolean equal to 1 iff the trail starts from plaintext\nmodel is the number of tweakey chunks controlled by the attacker\n",argv[0]);	
 		return 0;
 		}
-	if(argc>3){
-		fromPlaintext = atoi(argv[3]);
-	}
 	if(argc>4){
-		allowEqualStates = atoi(argv[4]);
+		fromPlaintext = atoi(argv[4]);
 	}
+	if(argc>5){
+		model = atoi(argv[5]);
+	}
+	
 
-	char* s = "_optimized";
-	if(!allowEqualStates){
-		s = "";
+	// Deduce file name
+
+    char algo[14] = "Deoxys_TK1";
+    // model%10 to avoid buffer overflows
+    if (!isKiasu) sprintf(algo,"Deoxys_TK%d",model%10);
+    if (isKiasu) sprintf(algo,"Kiasu");
+	char* s2 = "_withTruncatedKey";
+	if(!allowTruncKey){
+		s2 = "";
 	}
+	char* side = "Cipher";
+	if(fromPlaintext) side = "Plain";
 	
 	mkdir("output", 0777);
-	if(fromPlaintext) sprintf(filename,"output/Kiasu%s_boomerang_fromPlaintext_%dR_%dR.lp",s,ru,rl);
-  	if(!fromPlaintext) sprintf(filename,"output/Kiasu%s_boomerang_fromCiphertext_%dR_%dR.lp",s,ru,rl);
+	sprintf(filename,"output/%s_boomerang_from%stext%s_%dR_%dR.lp",algo,side,s2,ru,rl);
 
-	
-	
-	fi=fopen(filename,"wt");
+    fi=fopen(filename,"wt");
 
 	fprintf(fi,"Minimize\n"); /* print objective function */
-
-
-	fprintf(fi,"complexity\n");
-
-
+	fprintf(fi,"timecomplexity\n");
 
 	fprintf(fi,"Subject To\n"); /* proba def */
 	// proba = proba of lower trail * proba of upper trail * proba of the boomerang switch
@@ -624,15 +752,19 @@ int main(int argc, char** argv){
 	// * (2^8)^2 foreach inactive byte before the MixColumn in the lower trail
 	
 	if(fromPlaintext){
-		for (i = 0; i < (ru-1)*16; i++) fprintf(fi,"12 uaa%i + 8 uat%i + 7 uae%i + 8 uta%i + 256 uye%i + ",i,i,i,i,i);
+		for (i = 0; i < (ru-1)*16; i++) fprintf(fi,"12 uaa%i + 8 uat%i + 7 uae%i + 8 uta%i + ",i,i,i,i);
+		for (i = 16; i < (ru-1)*16; i++)  fprintf(fi,"8 uatkat%i + 8 uatket%i + 8 uatkta%i + 8 uatkti%i + 8 uatkit%i + ",i,i,i,i,i);
 		for (i = 0; i < 4*(ru-1); i++) fprintf(fi,"8 umct%i + 8 umcae%i + ", i,i);
+		fprintf(fi,"-1 topproba = 0\n");
 
 		// In the boomerang switch, see the section Sbox for more detail about the following lines
 		
-		fprintf(fi,"uswitchproba + ");
+		
 		for (i = 32; i < (rl+1)*16; i++) fprintf(fi,"12 laa%i + 16 lat%i + 256 lze%i + 7 lea%i + 8 let%i + ",i,i,i,i,i);
+		for (i = 32; i < (rl+1)*16; i++) fprintf(fi,"16 latkat%i + 8 latket%i + 16 latkit%i + ",i,i,i);
 		for (i = 4; i < 4*rl; i++) fprintf(fi,"16 lmcat%i + 8 lmcae%i + ", i, i);
-		fprintf(fi,"-1 uproba = 0\n\n");
+		fprintf(fi,"-1 botproba = 0\n");
+		fprintf(fi,"botproba + uswitchproba + topproba - uproba = 0\n\n");
 	}
 	
 
@@ -640,22 +772,28 @@ int main(int argc, char** argv){
 	// The symmetrically opposite for the best truncated trails starting from the ciphertext
 	
 	if (!fromPlaintext){
-		for (i = 0; i < (ru-1)*16; i++) fprintf(fi,"12 uaa%i + 7 uae%i + 16 uta%i + 8 ute%i + 256 uye%i + ",i,i,i,i,i);
+		for (i = 0; i < (ru-1)*16; i++) fprintf(fi,"12 uaa%i + 7 uae%i + 16 uta%i + 8 ute%i + ",i,i,i,i);
+		for (i = 16; i < (ru-1)*16; i++) fprintf(fi,"16 uatkta%i + 8 uatkte%i + 16 uatkti%i + ",i,i,i);
 		for (i = 0; i < 4*(ru-1); i++) fprintf(fi,"16 umcat%i + 8 umcae%i + ", i,i);
+		fprintf(fi,"-1 topproba = 0\n");
+
 		// In the boomerang switch, see the section Sbox for more detail about the following lines
-		fprintf(fi,"lswitchproba + ");
+		
 
 		for (i = 32; i < (rl+1)*16; i++) fprintf(fi,"12 laa%i + 8 lat%i + 256 lze%i + 8 lta%i + 7 lea%i + ",i,i,i,i,i);
+		for (i = 32; i < (rl+1)*16; i++) fprintf(fi,"8 latkat%i + 8 latkta%i + 8 latkte%i + 8 latkti%i + 8 latkit%i + ",i,i,i,i,i);
 		for (i = 4; i < 4*rl; i++) fprintf(fi,"8 lmct%i + 8 lmcae%i + ",i,i);
-		
-		fprintf(fi,"-1 lproba = 0\n\n");
+		fprintf(fi,"-1 botproba = 0\n");
+		fprintf(fi,"botproba + lswitchproba + topproba - lproba = 0\n\n");
 	}
-	
 
 	// Define the structure max size
+	// lLANEtruncbytes and uLANEtruncbytes are 0 if the key is not truncated.
+	for (i = 0; i < 16 ; i++) fprintf(fi,"8 lLANEtruncbytes%i + ",i);
+	for (i = 0; i < 16 ; i++) fprintf(fi,"8 uLANEtruncbytes%i + ",i);
 	for (i = 16*rl; i < 16*rl + 16; i++) fprintf(fi,"8 lzt%i + ",i);
-	for (i = 0; i < 16-1; i++) fprintf(fi,"8 uxt%i + ",i);
-	fprintf(fi, "8 uxt%i - structsize >= 0\n", 15);
+	for (i = 0; i < 16-1; i++) fprintf(fi,"8 uyt%i + ",i);
+	fprintf(fi, "8 uyt%i - structsize >= 0\n", 15);
 
 	// The distinguisher should be valid => the proba should be higher than the proba of a random pair
 	
@@ -664,8 +802,8 @@ int main(int argc, char** argv){
 	if (fromPlaintext){
 			// uprand = number of non truncated bits in input = proba of a random quartet collision
 	
-		for (i = 0; i < 16-1; i++) fprintf(fi,"8 uxt%i + ",i);
-		fprintf(fi, "8 uxt%i + uprand = 128\n", 15);
+		for (i = 0; i < 16-1; i++) fprintf(fi,"8 uyt%i + ",i);
+		fprintf(fi, "8 uyt%i + uprand = 128\n", 15);
 	}
 
 	if (!fromPlaintext){
@@ -705,28 +843,30 @@ int main(int argc, char** argv){
 	for (i = rl*16; i < rl*16 + 16-1; i++) fprintf(fi,"6 laa%i + ",i);
 	fprintf(fi, "6 laa%i - laa = 0\n", rl*16 + 15);
 
+	// lfilter = max(0, - 2 lk + 2 ll - 2 laa)
 	fprintf(fi, "lfilter >= 0\n");
 	fprintf(fi, "lfilter - 2 lk + 2 ll - 2 laa >= 0\n");
-	fprintf(fi, "lfilter - 255 lfilterbinary <= 0\n");
-	fprintf(fi, "lfilter + 255 lfilterbinary - 2 lk + 2 ll - 2 laa <= 255\n");
-	// Misses a condition so that lfilter <= max(0, 2 lk - 2 ll)
+	fprintf(fi, "lfilter - 1000 lfilterbinary <= 0\n");
+	fprintf(fi, "lfilter + 1000 lfilterbinary - 2 lk + 2 ll - 2 laa <= 1000\n");
+
+	
 
 	//ul
-	for (i = 16; i < 31; i++) fprintf(fi,"8 uxt%i + ",i);
-	fprintf(fi, "8 uxt%i - ul = 0\n", 31);
+	for (i = 16; i < 31; i++) fprintf(fi,"8 uyt%i + ",i);
+	fprintf(fi, "8 uyt%i - ul = 0\n", 31);
 
 	//uaa
 	for (i = 0; i < 15; i++) fprintf(fi,"6 uaa%i + ",i);
 	fprintf(fi, "6 uaa%i - uaa = 0\n", 15);
 
 	//uk
-	for (i = 0; i < 16-1; i++) fprintf(fi,"8 uxt%i + ",i);
-	fprintf(fi, "8 uxt%i - uk = 0\n", 15);
+	for (i = 0; i < 16-1; i++) fprintf(fi,"8 uyt%i + ",i);
+	fprintf(fi, "8 uyt%i - uk = 0\n", 15);
 
 	fprintf(fi, "ufilter >= 0\n");
 	fprintf(fi, "ufilter - 2 uk + 2 ul - 2 uaa >= 0\n");
-	fprintf(fi, "ufilter - 255 ufilterbinary <= 0\n");
-	fprintf(fi, "ufilter + 255 ufilterbinary - 2 uk + 2 ul - 2 uaa <= 255\n");
+	fprintf(fi, "ufilter - 1000 ufilterbinary <= 0\n");
+	fprintf(fi, "ufilter + 1000 ufilterbinary - 2 uk + 2 ul - 2 uaa <= 1000\n");
 
 	if(fromPlaintext){
 		// sigma = log(min(1,signal-to-noise)) 
@@ -735,7 +875,7 @@ int main(int argc, char** argv){
 		// Il faut calculer cxté en data = N = proba - sigma
 		// sigma <= 0 fyi
 		fprintf(fi, "uproba - sigma - 2 structsize >= 0\n");
-		fprintf(fi, "uproba - sigma - structsize - complexity = 0\n");
+		fprintf(fi, "uproba - sigma - structsize - datacomplexity = 0\n");
 	}
 
 	if(!fromPlaintext){
@@ -744,65 +884,339 @@ int main(int argc, char** argv){
 		fprintf(fi, "sigma <= 0 \n");
 		// Il faut calculer cxté en data = N = proba * max(prand/proba,1) 
 		fprintf(fi, "lproba - sigma - 2 structsize >= 0\n");
-		fprintf(fi, "lproba - sigma - structsize - complexity = 0\n");
+		fprintf(fi, "lproba - sigma - structsize - datacomplexity = 0\n");
 	}
+
+	// Data complexity has been computed. Now compute time complexity
+
+
+	if(fromPlaintext){
+		// 0. Start with:
+		// Q0 = upbroba - sigma pairs
+		// N0 = datacomplexity elements
+		fprintf(fi,"Q0 - uproba + sigma = 0\n");
+		fprintf(fi,"N0 - datacomplexity = 0\n");
+		
+
+		
+
+		// 1. Possible to directly filter out pairs which have the right plaintext difference (probability prand)
+		// Q1 = Q0 - uprand
+		// N1 = min(N0,Q0 - uprand) 
+		// Complexity: N0
+		fprintf(fi,"timecomplexity - N0 >= 0\n");
+
+		fprintf(fi, "Q1 - Q0 + uprand >= 0\n");
+
+		fprintf(fi, "N1 - N0 <= 0 \n");
+		fprintf(fi, "N1 - Q1 <= 0\n");
+		fprintf(fi, "N1 + 1000 N1b - N0 >= 0 \n");
+		fprintf(fi, "N1 - 1000 N1b - Q1 >= -1000\n");
+
+		// 2. For each element, compute the deduced key material near the ciphertext, put in a hashtable and find collisions
+		// Q2 = Q1 + min(2 ll - laa - lk, 0) && Q2 >= 0
+		// N2 = ?? (not needed)
+		// Complexity: N1 + ll
+
+		fprintf(fi, "timecomplexity - N1 - ll >= 0\n");
+
+		fprintf(fi,"Q2i - Q1 <= 0\n");
+		fprintf(fi,"Q2i - Q1 - 2 ll + laa + lk <= 0\n");
+		fprintf(fi,"Q2i + 1000 Q2b - Q1 >= 0\n");
+		fprintf(fi,"Q2i - 1000 Q2b - Q1 - 2 ll + laa + lk >= -1000\n");
+
+		fprintf(fi,"Q2 - Q2i >= 0\n");
+		fprintf(fi,"Q2 >= 0\n");
+
+		// 3. For each quartet, compute the deduced key material near the plaintext & filter out pairs
+		// Q3 = Q2 + min(2 ul - uaa - uk, 0) (not needed)
+		// N3 = ?? (not needed)
+		// Complexity: Q2 + ul
+
+		fprintf(fi, "timecomplexity - Q2 - ul >= 0\n");
+		
+		
+		// fprintf(fi,"Q3 - Q2 <= 0\n");
+		// fprintf(fi,"Q3 - Q2 - 2 ul + uaa + uk <= 0\n");
+		// fprintf(fi,"Q3 - Q3b - Q2 >= 0\n");
+		//fprintf(fi,"Q3 + Q3b - Q2 - 2 ul + uaa + uk >= 1\n");
+
+		// NOTE: maybe this step can me merged with the previous one all at once, but who cares?
+		// 4. For each quartet, increment the counters
+		// Complexity: Q1 + 2 ul - uaa - uk + 2 ll - laa - lk
+
+		fprintf(fi,"timecomplexity - Q1 - 2 ul + uaa + uk - 2 ll + laa + lk >= 0\n");
+	}
+	
+	if(!fromPlaintext){
+		
+		// 0. Start with:
+		// Q0 = lpbroba - sigma pairs
+		// N0 = datacomplexity elements
+
+		fprintf(fi,"Q0 - lproba + sigma = 0\n");
+		fprintf(fi,"N0 - datacomplexity = 0\n");
+		
+
+		
+
+		// 1. Possible to directly filter out pairs which have the right plaintext difference (probability prand)
+		// Q1 = Q0 - lprand
+		// N1 = min(N0,Q0 - lprand) 
+		// Complexity: N0
+		fprintf(fi,"timecomplexity - N0 >= 0\n");
+
+		fprintf(fi, "Q1 - Q0 + lprand >= 0\n");
+
+		fprintf(fi, "N1 - N0 <= 0 \n");
+		fprintf(fi, "N1 - Q1 <= 0\n");
+		fprintf(fi, "N1 + 1000 N1b - N0 >= 0\n");
+		fprintf(fi, "N1 - 1000 N1b - Q1 >= -1000\n");
+		
+		// 2. For each element, compute the deduced key material near the ciphertext, put in a hashtable and find collisions
+		// Q2 = Q1 + min(2 ul - uaa - uk, 0)
+		// N2 = ?? (not needed)
+		// Complexity: N1 + ul
+		
+		fprintf(fi, "timecomplexity - N1 - ul >= 0\n");
+
+		fprintf(fi,"Q2i - Q1 <= 0\n");
+		fprintf(fi,"Q2i - Q1 - 2 ul + uaa + uk <= 0\n");
+		fprintf(fi,"Q2i + 1000 Q2b - Q1 >= 0\n");
+		fprintf(fi,"Q2i - 1000 Q2b - Q1 - 2 ul + uaa + uk >= -1000\n");
+
+		fprintf(fi,"Q2 - Q2i >= 0\n");
+		fprintf(fi,"Q2 >= 0\n");
+
+		// 3. For each quartet, compute the deduced key material near the plaintext & filter out pairs
+		// Q3 = Q2 + min(2 ll - laa - lk, 0) (not needed)
+		// N3 = ?? (not needed)
+		// Complexity: Q2 + ll
+
+		fprintf(fi, "timecomplexity - Q2 - ll >= 0\n");
+		
+		
+		// fprintf(fi,"Q3 - Q2 <= 0\n");
+		// fprintf(fi,"Q3 - Q2 - 2 ll + laa + lk <= 0\n");
+		// fprintf(fi,"Q3 - Q3b - Q2 >= 0\n");
+		// fprintf(fi,"Q3 + Q3b - Q2 - 2 ll + laa + lk >= 1\n");
+
+		// NOTE: maybe this step can me merged with the previous one all at once, but who cares?
+		// 4. For each quartet, increment the counters
+		// Complexity: Q1 + 2 ul - uaa - uk + 2 ll - laa - lk
+
+		fprintf(fi,"timecomplexity - Q1 - 2 ul + uaa + uk - 2 ll + laa + lk >= 0\n");
+	}
+
 
 	// Constraint to avoid dumb trails: 
 	// No MixColumn transition should have 4 active truncated columns.
 	// In the middle rounds, if a column is already switch, it costs nothing to put active differences into it.
 	// In the middle rounds, we won't allow 4 active truncated columns if the state is not switched.
 	// However, we allow the MixColumn at the first/last round to be full truncated, since it can be compen
-	for(i = 1; i < (ru + 1) ; i++){
+	for(i = 1; i < ru-1 ; i++){
 		fprintf(fi, "udt%i + udt%i + udt%i + udt%i <= 3\n", 4*i, 4*i + 1, 4*i + 2, 4*i + 3);
 	}
-	for(i = 0; i < rl ; i++){
+	for(i = 1; i < rl-1; i++){
 		fprintf(fi, "ldt%i + ldt%i + ldt%i + ldt%i <= 3\n", 4*i, 4*i + 1, 4*i + 2, 4*i + 3);
 	}
 	
 	/* round function constraints */
 	/* Constraints for subtweakeys*/
 	
-	//TK1 model Kiasu
-	//upper trail
-	for(i=0;i<16;i++){
-		if(i%4< 2){
-			for (r = 0; r<(ru+1); r++) {
-				fprintf(fi,"utk%i - uLANE%i = 0\n",(16*r)+i,i);
-			}
-		}else{
-			for (r = 0; r<(ru+1); r++) {
-				fprintf(fi,"utk%i = 0\n",(16*r)+i);
-			}
-			fprintf(fi,"uLANE%i = 0\n",i);
-		}
-	}
 
-	// lower trail
-	for(i=0;i<16;i++){
-		if(i%4< 2){
-			for (r = 0; r<(rl+1); r++) {
-				fprintf(fi,"ltk%i - lLANE%i = 0\n",(16*r)+i,i);
-			}
-		}else{
-			for (r = 0; r<(rl+1); r++) {
-				fprintf(fi,"ltk%i = 0\n",(16*r)+i);
-			}
-			fprintf(fi,"lLANE%i = 0\n",i);
+	//TKi model, TK1 model for Kiasu
+    //upper trail
+    
+    if(!isKiasu){
+        for(i=0;i<16;i++){
+            tmpindex=i;
+			//Only useful if Truncated Keys are activated
+            fprintf(fi,"uLANE%i - uLANEt%i >= 0\n",i,i);
+			//Only useful if Truncated Keys are activated
+            for (r = 0; r<(ru+1); r++) {
+                fprintf(fi,"utk%i - uLANE%i <= 0\n",(16*r)+tmpindex,i);
+                fprintf(fi,"utkt%i - uLANEt%i <= 0\n",(16*r)+tmpindex,i);
+                tmpindex=NextPosition(tmpindex,isKiasu);
+            }
+            
+            if(model){
+                tmpindex=i;
+                for (r = 0; r<(ru+1)-1; r++) {
+                    fprintf(fi,"utk%i + ",(16*r)+tmpindex);
+                    tmpindex=NextPosition(tmpindex,isKiasu);
+                }
+                fprintf(fi,"utk%i - %i uLANE%i >= -%d\n",16*ru+tmpindex,ru + 1,i,model-1);
+
+                // uLANEt=1, how many degree of freedom of truncation? How many tweakey cancelation on Subtweakey rounds?.
+                // Answer: uLANEtruncbytes%i = model - #times(utkt%i=0), 
+				//Only useful if Truncated Keys are activated
+                tmpindex=i;
+                for (r = 0; r<(ru+1)-1; r++) {
+                    fprintf(fi,"utkt%i + ",(16*r)+tmpindex);
+                    tmpindex=NextPosition(tmpindex,isKiasu);
+                }
+            
+                fprintf(fi,"utkt%i - %i uLANEt%i - uLANEtruncbytes%i >= -%d\n",16*ru+tmpindex,ru + 1,i,i,model);
+                fprintf(fi,"uLANEt%i - uLANEtruncbytes%i <= 0\n",i,i);
+
+                // Answer: if uLANEt= 0, uLANEtruncbytes%=0
+                fprintf(fi,"%d uLANEt%i - uLANEtruncbytes%i >= 0\n",model,i,i);
+            }
+
+        }
+
+
+        // lower trail
+        for(i=0;i<16;i++){
+            tmpindex=i;
+			//Only useful if Truncated Keys are activated
+            fprintf(fi,"lLANE%i - lLANEt%i >= 0\n",i,i);
+            for (r = 0; r<(rl+1); r++) {
+                fprintf(fi,"ltk%i - lLANE%i <= 0\n",(16*r)+tmpindex,i);
+                fprintf(fi,"ltkt%i - lLANEt%i <= 0\n",(16*r)+tmpindex,i);
+                tmpindex=NextPosition(tmpindex,isKiasu);
+            }
+            if(model){
+                tmpindex=i;
+                for (r = 0; r<(rl+1)-1; r++) {
+                    fprintf(fi,"ltk%i + ",(16*r)+tmpindex);
+                    tmpindex=NextPosition(tmpindex,isKiasu);
+                }
+                fprintf(fi,"ltk%i - %i lLANE%i >= -%d\n",16*rl+tmpindex,rl + 1,i,model-1);
+
+                // See upper trail for explanation
+                tmpindex=i;
+				//Only useful if Truncated Keys are activated
+                for (r = 0; r<(rl+1)-1; r++) {
+                    fprintf(fi,"ltkt%i + ",(16*r)+tmpindex);
+                    tmpindex=NextPosition(tmpindex,isKiasu);
+                }
+                fprintf(fi,"ltkt%i - %i lLANEt%i - lLANEtruncbytes%i >= -%d\n",16*rl+tmpindex,rl + 1,i,i,model);
+                fprintf(fi,"lLANEt%i - lLANEtruncbytes%i <= 0\n",i,i);
+                fprintf(fi,"%d lLANEt%i - lLANEtruncbytes%i >= 0\n",model,i,i);
+            }
+        }
+    }
+    else{
+        for(i=0;i<16;i++){
+            if(i%4< 2){
+                for (r = 0; r<(ru+1); r++) {
+                    fprintf(fi,"utk%i - uLANE%i = 0\n",(16*r)+i,i);
+					//Only useful if Truncated Keys are activated
+                    fprintf(fi,"utkt%i - uLANEt%i = 0\n",(16*r)+i,i);
+                }
+				//Only useful if Truncated Keys are activated
+                fprintf(fi,"uLANE%i - uLANEt%i >= 0\n",i,i);
+            }else{
+                for (r = 0; r<(ru+1); r++) {
+                    fprintf(fi,"utk%i = 0\n",(16*r)+i);
+					//Only useful if Truncated Keys are activated
+                    fprintf(fi,"utkt%i = 0\n",(16*r)+i);
+                }
+                fprintf(fi,"uLANE%i = 0\n",i);
+				//Only useful if Truncated Keys are activated
+                fprintf(fi,"uLANEt%i = 0\n",i);
+            }
+			//Only useful if Truncated Keys are activated
+            fprintf(fi,"uLANEt%i - uLANEtruncbytes%i = 0\n",i,i);
+        }
+
+        // lower trail
+        for(i=0;i<16;i++){
+            if(i%4< 2){
+                for (r = 0; r<(rl+1); r++) {
+                    fprintf(fi,"ltk%i - lLANE%i = 0\n",(16*r)+i,i);
+					//Only useful if Truncated Keys are activated
+                    fprintf(fi,"ltkt%i - lLANEt%i = 0\n",(16*r)+i,i);
+                }
+				//Only useful if Truncated Keys are activated
+                fprintf(fi,"lLANE%i - lLANEt%i >= 0\n",i,i);
+            }else{
+                for (r = 0; r<(rl+1); r++) {
+                    fprintf(fi,"ltk%i = 0\n",(16*r)+i);
+					//Only useful if Truncated Keys are activated
+                    fprintf(fi,"ltkt%i = 0\n",(16*r)+i);
+                }
+                fprintf(fi,"lLANE%i = 0\n",i);
+				//Only useful if Truncated Keys are activated
+                fprintf(fi,"lLANEt%i = 0\n",i);
+            }
+			//Only useful if Truncated Keys are activated
+            fprintf(fi,"lLANEt%i - lLANEtruncbytes%i = 0\n",i,i);
+        }
+
+    }
+
+	// Conditions on truncated tweakey depending on model
+	//Only useful if Truncated Keys are activated
+    if(!isKiasu){
+        switch(model){
+            case 0:
+                //SK model
+                for(i=0;i<16;i++){
+                    fprintf(fi,"uLANE%i = 0\n",i);
+                    fprintf(fi,"lLANE%i = 0\n",i);
+                }
+                break;
+            
+            case 1:
+                for(i=0;i<16;i++){
+                    tmpindex=i;
+                    for (r = 0; r<(ru-1); r++) {
+                        tmpindex=NextPosition(tmpindex,isKiasu);
+                    }
+                    if(fromPlaintext){
+                        fprintf(fi,"lLANEt%i - uLANEt%i <= 0\n",tmpindex, i);
+                    }else{
+                        fprintf(fi,"uLANEt%i - lLANEt%i <= 0\n",i, tmpindex);
+                    }
+                }
+                break;
+            case 2:
+            case 3:
+                // TK1 model
+                //
+                for(i=0;i<16;i++){
+                    if(fromPlaintext){
+                        fprintf(fi,"lLANEt%i = 0\n",i);
+                    }else{
+                        fprintf(fi,"uLANEt%i = 0\n",i);
+                    }
+                }
+                break;
+        }
+    }
+    else{
+        // For structures, the lower truncated tweakey can be truncated only at the positions where the upper trail is truncated.
+        for(i=0;i<16;i++){
+            if(fromPlaintext){
+                if(i%4< 2){
+                    fprintf(fi,"uLANEt%i - lLANEt%i >= 0\n",i,i);
+                }
+            }else{
+                if(i%4< 2){
+                    fprintf(fi,"uLANEt%i - lLANEt%i <= 0\n",i,i);
+                }
+            }
+            
+        }
+
+    }
+
+	unext=0;
+	udummy=0;
+	udummy_e=0;
+	ucancel=0;
+	ucolumn_deg=0;
+	for (j = 0; j < 4; j++){
+		for (i = 0; i < 4; i++){
+			a[i][j] = unext++; /* initialize variable indices */
+			tk[i][j] = a[i][j];
 		}
 	}
 	
-	
-	unext=0;
- 	udummy=0;
- 	udummy_e=0;
- 	ucancel=0;
- 	ucolumn_deg=0;
- 	for (j = 0; j < 4; j++){
- 		for (i = 0; i < 4; i++){
- 			a[i][j] = unext++; /* initialize variable indices */
- 			tk[i][j] = a[i][j];
- 		}
- 	}
+
 	for (r = 0; r<ru; r++) {
 		AddTweakeyU(a,tk);
 		ShuffleKey(tk);
@@ -816,6 +1230,22 @@ int main(int argc, char** argv){
 	//fprintf(fi,"LANE%i = %d\n",16-1,active_num);
 	//fprintf(fi,"LANE%i = 1\n\n",16-1);
 	
+	if((!isKiasu) && model){
+		// constraints on freedom degrees for canceling difference
+		// available freedom degrees: 3*(Sum of LANE) 
+		// consuming degrees for state diff cancelation: Sum of column_deg
+		// consuming degrees for key schedule: ROUNDS*(Sum of LANE) - (Sum of tk)
+		// Constraints:
+		//      model*(Sum of LANE) >= (Sum of cancel) + ROUNDS*(Sum of LANE) - (Sum of tk)
+		// ==>  (model-ROUNDS)*(Sum of LANE) - (Sum of canceli) + (Sum of tk) >= 0
+
+		for (i = 0; i < 16; i++) fprintf(fi,"%i uLANE%i + ",model-(ru+1),i);	
+		for (i = 0; i < ucolumn_deg; i++) fprintf(fi,"-1 ucolumn_deg%i + ",i);
+		for (i = 0; i < (ru+1)*16-1; i++) fprintf(fi,"utk%i + ",i);
+		fprintf(fi,"utk%i - ufreedom >= 0\n",(ru+1)*16-1);
+		fprintf(fi,"ufreedom >= 1\n\n");
+	}
+	
 	//x-xt>=0
 	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"ux%i - uxt%i >= 0\n",i,i);
 	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uy%i - uyt%i >= 0\n",i,i);
@@ -826,12 +1256,6 @@ int main(int argc, char** argv){
 	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uyt%i - uye%i >= 0\n",i,i);
 	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uzt%i - uze%i >= 0\n",i,i);
 
-	if(!allowEqualStates){
-		// Disable the equal states optimisation: set the values u*e to 0 and let the solver remove all the useless equations.
-		for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uxe%i = 0\n",i);
-		for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uye%i = 0\n",i);
-		for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uze%i = 0\n",i);
-	}
 
 	lnext=0;
 	ldummy=0;
@@ -866,6 +1290,13 @@ int main(int argc, char** argv){
 	//      model*(Sum of LANE) >= (Sum of cancel) + ROUNDS*(Sum of LANE) - (Sum of tk)
 	// ==>  (model-ROUNDS)*(Sum of LANE) - (Sum of canceli) + (Sum of tk) >= 0
 
+	if((!isKiasu) && model){
+		for (i = 0; i < 16; i++) fprintf(fi,"%i lLANE%i + ",model-(rl+1),i);	
+		for (i = 4; i < lcolumn_deg; i++) fprintf(fi,"-1 lcolumn_deg%i + ",i);
+		for (i = 0; i < (rl+1)*16-1; i++) fprintf(fi,"ltk%i + ",i);
+		fprintf(fi,"ltk%i - lfreedom >= 0\n",(rl+1)*16-1);
+		fprintf(fi,"lfreedom >= 1\n\n");
+	}
 	
 
 	//x-xt>=0
@@ -877,13 +1308,6 @@ int main(int argc, char** argv){
 	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"lxt%i - lxe%i >= 0\n",i,i);
 	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"lyt%i - lye%i >= 0\n",i,i);
 	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"lzt%i - lze%i >= 0\n",i,i);
-
-	if(!allowEqualStates){
-		// Disable the equal states optimisation: set the values l*e to 0 and let the solver remove all the useless equations.
-		for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"lxe%i = 0\n",i);
-		for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"lye%i = 0\n",i);
-		for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"lze%i = 0\n",i);
-	}
 
 	
 	// Either the lower or the upper trail is switched.
@@ -924,7 +1348,10 @@ int main(int argc, char** argv){
 
 	if(fromPlaintext) {
 		// Boomerang switch probability when starting from the plaintext
-		for (i = 0; i < 32; i++) fprintf(fi,"12 uaanoswitch%i + 8 uatnoswitch%i + 7 uaenoswitch%i + 8 utanoswitch%i + 15 ueanoswitch%i + 7 ueenoswitch%i + 8 uetnoswitch%i + 12 laanoswitch%i + 16 latnoswitch%i + 7 leenoswitch%i + 14 laenoswitch%i + 7 leanoswitch%i + 8 letnoswitch%i + 8 natswitch%i + 6 aaswitch%i + 8 atswitch%i + 8 aeswitch%i + 8 easwitch%i + 8 etswitch%i + 8 eeswitch%i + ",i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i);
+		for (i = 0; i < 32; i++) fprintf(fi,"12 uaanoswitch%i + 8 uatnoswitch%i + 7 uaenoswitch%i + 8 utanoswitch%i + 15 ueanoswitch%i + 7 ueenoswitch%i + 8 uetnoswitch%i + 12 laanoswitch%i + 16 latnoswitch%i + 7 leenoswitch%i + 14 laenoswitch%i + 7 leanoswitch%i + 8 letnoswitch%i + 8 itswitch%i + 6 aaswitch%i + 8 atswitch%i + 8 aeswitch%i + 8 easwitch%i + 8 etswitch%i + 8 eeswitch%i + ",i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i);
+		// ATK probabilities
+		for (i = 0; i < 32; i++) fprintf(fi,"8 uatkatnoswitch%i + 8 uatketnoswitch%i + 8 uatktanoswitch%i + 8 uatktinoswitch%i + 8 uatkitnoswitch%i + ",i,i,i,i,i);
+		for (i = 0; i < 32; i++) fprintf(fi,"16 latkatnoswitch%i + 8 latketnoswitch%i + 16 latkitnoswitch%i + ",i,i,i);
 		// MixColumn Probabilities
 		for(i = 0; i < 4; i++) fprintf(fi,"16 lmcatswitch%i + 8 umctswitch%i + 8 umcaeswitch%i + 8 lmcaeswitch%i + ",i,i,i,i);
 		fprintf(fi,"-1 uswitchproba = 0\n");
@@ -933,22 +1360,48 @@ int main(int argc, char** argv){
 
 	if(!fromPlaintext) {
 		// Boomerang switch probability when starting from the ciphertext
-		for (i = 0; i < 32; i++) fprintf(fi,"12 uaanoswitch%i + 7 uaenoswitch%i + 16 utanoswitch%i + 8 utenoswitch%i + 14 ueanoswitch%i + 7 ueenoswitch%i + 12 laanoswitch%i + 8 latnoswitch%i + 15 laenoswitch%i + 7 leenoswitch%i + 8 ltenoswitch%i + 8 ltanoswitch%i + 7 leanoswitch%i + 8 tnaswitch%i + 6 aaswitch%i + 8 aeswitch%i + 8 taswitch%i + 8 teswitch%i + 8 easwitch%i + 8 eeswitch%i + ",i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i);
+		for (i = 0; i < 32; i++) fprintf(fi,"12 uaanoswitch%i + 7 uaenoswitch%i + 16 utanoswitch%i + 8 utenoswitch%i + 14 ueanoswitch%i + 7 ueenoswitch%i + 12 laanoswitch%i + 8 latnoswitch%i + 15 laenoswitch%i + 7 leenoswitch%i + 8 ltenoswitch%i + 8 ltanoswitch%i + 7 leanoswitch%i + 8 tiswitch%i + 6 aaswitch%i + 8 aeswitch%i + 8 taswitch%i + 8 teswitch%i + 8 easwitch%i + 8 eeswitch%i + ",i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i);
+		// ATK probabilities
+		for (i = 0; i < 32; i++) fprintf(fi,"8 latkatnoswitch%i + 8 latketnoswitch%i + 8 latktanoswitch%i + 8 latktinoswitch%i + 8 latkitnoswitch%i + ",i,i,i,i,i);
+		for (i = 0; i < 32; i++) fprintf(fi,"16 uatkatnoswitch%i + 8 uatketnoswitch%i + 16 uatkitnoswitch%i + ",i,i,i);
 		// MixColumn Probabilities
 		for(i = 0; i < 4; i++) fprintf(fi,"8 lmctswitch%i + 16 umcatswitch%i + 8 lmcaeswitch%i + 8 umcaeswitch%i + ",i,i,i,i);
 		fprintf(fi,"-1 lswitchproba = 0\n");
 	}
 
 	
+	if(model || isKiasu){
+		// TKi model
+		/* The tweakey must be active */
+		for (i = 0; i < 16-1; i++) fprintf(fi,"uLANE%i + ",i);
+		fprintf(fi,"uLANE%i >= 1\n\n",16-1);
 
-	// TKi model
-	/* The tweakey must be active */
-	for (i = 0; i < 16-1; i++) fprintf(fi,"uLANE%i + ",i);
-	fprintf(fi,"uLANE%i >= 1\n\n",16-1);
+		for (i = 0; i < 16-1; i++) fprintf(fi,"lLANE%i + ",i);
+		fprintf(fi,"lLANE%i >= 1\n\n",16-1);
 
-	for (i = 0; i < 16-1; i++) fprintf(fi,"lLANE%i + ",i);
-	fprintf(fi,"lLANE%i >= 1\n\n",16-1);
+		if(allowTruncKey){
+			// Only for Truncated Keys
+			for (i = 0; i < 16; i++) fprintf(fi,"uLANEt%i + ",i);
+			for (i = 0; i < 16-1; i++) fprintf(fi,"lLANEt%i + ",i);
+			fprintf(fi,"lLANEt%i >= 1\n\n",16-1);
+		}else{
+			for (i = 0; i < 16; i++) fprintf(fi,"uLANEt%i = 0\n",i);
+			for (i = 0; i < 16; i++) fprintf(fi,"lLANEt%i = 0\n",i);
+		}
+	}else{
+		// SK model
+		// At least one active byte in the first state
 
+		for (i = 0; i<15; i++) {
+			fprintf(fi,"lx%i + ",i);
+		}
+		fprintf(fi,"lx%i >= 1\n",15);
+
+		for (i = 0; i<15; i++) {
+			fprintf(fi,"ux%i + ",i);
+		}
+		fprintf(fi,"ux%i >= 1\n",15);
+	}
 	
 
 
@@ -973,7 +1426,7 @@ int main(int argc, char** argv){
 	for (i = 0; i < ldummy_e; i++) fprintf(fi,"0 <= le%i <= 4\n",i);
 	for (i = 0; i < ldummy; i++) fprintf(fi,"0 <= lmct%i <= 3\n",i);
 	for (i = 0; i < ldummy; i++) fprintf(fi,"0 <= lmcat%i <= 3\n",i);
-	fprintf(fi,"0 <= lfreedom <= 48\n\n");
+	if((!isKiasu) && model) fprintf(fi,"0 <= lfreedom <= 48\n\n");
 
 	for (i = 0; i < ucolumn_deg; i++) fprintf(fi,"0 <= ucolumn_deg%i <= 7\n",i);
 	for (i = 0; i < udummy_e; i++) fprintf(fi,"0 <= ue%i <= 4\n",i);
@@ -986,9 +1439,9 @@ int main(int argc, char** argv){
 
 	fprintf(fi,"0 <= structsize <= 128\n\n");
 
-	fprintf(fi,"0 <= ufreedom <= 48\n\n");
+	if((!isKiasu) && model) fprintf(fi,"0 <= ufreedom <= 48\n\n");
 	
-	fprintf(fi,"0 <= complexity <= 256\n\n");
+	fprintf(fi,"0 <= datacomplexity <= 256\n\n");
 
 	fprintf(fi,"0 <= lfilter <= 255\n\n");
 	fprintf(fi,"0 <= ufilter <= 255\n\n");
@@ -999,11 +1452,23 @@ int main(int argc, char** argv){
 
 	}
 
+	for(i=0; i< 16; i++){
+		fprintf(fi,"0 <= uLANEtruncbytes%i <= %d\n\n",i,model); 
+		fprintf(fi,"0 <= lLANEtruncbytes%i <= %d\n\n",i,model); 
+	}
+
 
 	if(!fromPlaintext){
 		fprintf(fi,"0 <= lprand <= 128\n\n");
 		fprintf(fi,"0 <= lproba <= 384\n\n");
 	}
+
+
+	fprintf(fi,"-256 <= sigma <= 0\n\n");
+	fprintf(fi,"-256 <= Q2i <= 256\n");
+
+
+	
 	
 
 	fprintf(fi,"\nGeneral\n"); /* integer constraints */
@@ -1019,7 +1484,12 @@ int main(int argc, char** argv){
 	for (i = 0; i < udummy; i++) fprintf(fi,"umcat%i\n",i);
 	for (i = 0; i < udummy; i++) fprintf(fi,"umce%i\n",i);
 	for (i = 0; i < udummy; i++) fprintf(fi,"umcae%i\n",i);
-	
+	if((!isKiasu) && model){
+		fprintf(fi,"ufreedom\n");
+		fprintf(fi,"lfreedom\n");
+	}
+	fprintf(fi,"topproba\n");
+	fprintf(fi,"botproba\n");
 	fprintf(fi,"structsize\n\n");
 	fprintf(fi,"ufilter\n\n");
 	fprintf(fi,"lfilter\n\n");
@@ -1053,11 +1523,24 @@ int main(int argc, char** argv){
 	for (i = 0; i < 4; i++) fprintf(fi,"umcaeswitch%i\n\n",i);
 	for (i = 0; i < 4; i++) fprintf(fi,"lmceswitch%i\n\n",i);
 	for (i = 0; i < 4; i++) fprintf(fi,"umceswitch%i\n\n",i);
+
+	for(i=0; i< 16; i++) fprintf(fi,"uLANEtruncbytes%i\n\n",i);
+	for(i=0; i< 16; i++) fprintf(fi,"lLANEtruncbytes%i\n\n",i);
 	
-	fprintf(fi,"complexity\n\n");
+	fprintf(fi,"datacomplexity\n\n");
+	fprintf(fi,"N0\n");
+	fprintf(fi,"Q0\n");
+	fprintf(fi,"N1\n");
+	fprintf(fi,"Q1\n");
+	fprintf(fi,"Q2\n");
+	fprintf(fi,"Q2i\n");
+	fprintf(fi,"timecomplexity\n");
+
 	
 	fprintf(fi,"\nBinary\n"); /* binary constraints */
 
+	fprintf(fi,"N1b\n");
+	fprintf(fi,"Q2b\n");
 	fprintf(fi,"ufilterbinary\n\n");
 	fprintf(fi,"lfilterbinary\n\n");
 
@@ -1118,20 +1601,54 @@ int main(int argc, char** argv){
 	for (i = 0; i < ldummy; i++) fprintf(fi,"ld%i\n",i);
 	for (i = 0; i < ldummy; i++) fprintf(fi,"lde%i\n",i);
 	for (i = 0; i < lcancel; i++) fprintf(fi,"lcancel%i\n",i);
-	for (i = 0; i < 16; i++) fprintf(fi,"lLANE%i\n",i);
+	if(isKiasu || model){
+		for (i = 0; i < 16; i++) fprintf(fi,"lLANE%i\n",i);
+		for (i = 0; i < 16; i++) fprintf(fi,"lLANEt%i\n",i);
+	}
 
-	
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkta%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkat%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkte%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latket%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkit%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkti%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latktt%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkee%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkai%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkii%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkaa%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"latkia%i\n",i);
+	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"ltkt%i\n",i);
 	for (i = 0; i < (rl+1)*16; i++) fprintf(fi,"ltk%i\n",i);
 
 	for (i = 0; i < udummy; i++) fprintf(fi,"udt%i\n",i);
 	for (i = 0; i < udummy; i++) fprintf(fi,"ud%i\n",i);
 	for (i = 0; i < udummy; i++) fprintf(fi,"ude%i\n",i);
 	for (i = 0; i < ucancel; i++) fprintf(fi,"ucancel%i\n",i);
+	if(isKiasu || model){
+		for (i = 0; i < 16; i++) fprintf(fi,"uLANE%i\n",i);
+		for (i = 0; i < 16; i++) fprintf(fi,"uLANEt%i\n",i);
+	}
+	
 
-	for (i = 0; i < 16; i++) fprintf(fi,"uLANE%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkta%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkat%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkte%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatket%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkit%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkti%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatktt%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkee%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkai%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkii%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkaa%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"uatkia%i\n",i);
+	
 
 	
 	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"utk%i\n",i);
+	for (i = 0; i < (ru+1)*16; i++) fprintf(fi,"utkt%i\n",i);
+
 
 	for (i = 0; i < 32; i++) fprintf(fi,"uxswitched%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"lxswitched%i\n",i);
@@ -1139,8 +1656,34 @@ int main(int argc, char** argv){
 	for (i = 0; i < 32; i++) fprintf(fi,"lzswitched%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"uyswitched%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"lyswitched%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"liinoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latktanoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latktenoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latktinoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latkatnoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latketnoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latkitnoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latkttnoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latkeenoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latkainoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latkaanoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latkiinoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"latkianoswitch%i\n",i);
 
-	for (i = 0; i < 32; i++) fprintf(fi,"nanaswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatktanoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatktenoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatktinoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatkatnoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatketnoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatkitnoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatkttnoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatkeenoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatkainoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatkaanoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatkiinoswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"uatkianoswitch%i\n",i);
+
+	for (i = 0; i < 32; i++) fprintf(fi,"uiinoswitch%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"uaanoswitch%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"uatnoswitch%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"uaenoswitch%i\n",i);
@@ -1159,12 +1702,13 @@ int main(int argc, char** argv){
 	for (i = 0; i < 32; i++) fprintf(fi,"leanoswitch%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"lttnoswitch%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"letnoswitch%i\n",i);
-	for (i = 0; i < 32; i++) fprintf(fi,"anaswitch%i\n",i);
-	for (i = 0; i < 32; i++) fprintf(fi,"tnaswitch%i\n",i);
-	for (i = 0; i < 32; i++) fprintf(fi,"enaswitch%i\n",i);
-	for (i = 0; i < 32; i++) fprintf(fi,"naaswitch%i\n",i);
-	for (i = 0; i < 32; i++) fprintf(fi,"natswitch%i\n",i);
-	for (i = 0; i < 32; i++) fprintf(fi,"naeswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"iiswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"aiswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"tiswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"eiswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"iaswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"itswitch%i\n",i);
+	for (i = 0; i < 32; i++) fprintf(fi,"ieswitch%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"aaswitch%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"atswitch%i\n",i);
 	for (i = 0; i < 32; i++) fprintf(fi,"aeswitch%i\n",i);
