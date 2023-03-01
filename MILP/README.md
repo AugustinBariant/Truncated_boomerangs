@@ -1,64 +1,75 @@
 # MILP model For truncated boomerang attacks
 
 
+There are several steps to generate parameters for a boomerang attack:
+1. Generate the MILP model with `Deoxys_boomerang` or `Kiasu_boomerang`
+2. Solve the model (with Gurobi)
+3. (optional) Generate a figure to visualize the trail using `make_figure`
+4. Instanciate the differences.  The requires some manual work, starting from `Instantiate_diff.sage`
+5. (optional) Generate a figure with instanciated values using `make_figure`
+
+## Compilation
+
+The provided `Makefile` should automate part of the work:
+- running `make build` or `make` will compile the programs
+- running `make test` will run the search for a 6-round bommerang attack against AES and generate a PDF figure
+- for a given set of parameters, you can run step 1 manually (for instance `Deoxys_boomerang 5 6 0 3` for an attack against 11-round Deoxys in the RTK3 model), and run `make pdf` to run steps 2 and 3.
+
 ## MILP model generation
-To generate the MILP Files, first create a folder LPFiles/ in your current directory, then compile the c source Deoxys_boomerang_truncated_all.c (or Kiasu_boomerang_truncated.c) into an executable (for instance, a.out):
 
+To generate the MILP model run the executable:
 ```sh
-gcc Deoxys_boomerang_truncated_all.c
+./Deoxys_boomerang ⟨U⟩ ⟨L⟩ ⟨fromPt⟩ ⟨i⟩ ⟨opt⟩
+```
+or
+```sh
+./Kiasu_boomerang ⟨U⟩ ⟨L⟩ ⟨fromPt⟩ ⟨opt⟩
 ```
 
-then run the executable (omit the fourth parameter i for Kiasu):
-
-```sh
-./a.out U L fromPt i opt
-```
-
-This command will create the MILP file for the search of a boomerang trail with U upper rounds, L lower rounds, starting from the Plaintext iff fromPT!=0, in the RTKi model, and with equal states optimisation disabled iff opt=0. The .lp file is generated in the LPFiles/ folder. In total, the boomerang trail will reach U + L rounds (the upper and lower trails have each 1 extra round in the middle, which overlaps with the other's main trail).
+This will generate the MILP file for the search of a boomerang trail with ⟨U⟩ upper rounds, ⟨L⟩ lower rounds, starting from the Plaintext iff ⟨fromPT⟩≠0, in the RTK⟨i⟩ model (for Deoxys), and with equal states optimisation disabled iff ⟨opt⟩=0. The `.lp` file is generated in the `output/` folder. In total, the boomerang trail will reach ⟨U⟩+⟨L⟩ rounds (the upper and lower trails have each 1 extra round in the middle, which overlaps with the other's main trail).
 
 
 ## MILP solving
-Then, run the gurobi optimizer (or any other MILP solver of your choice) on the MILP file. For gurobi, the command looks like this:
 
+Then, run the gurobi optimizer (or any other MILP solver of your choice) on the MILP `.lp` file. For gurobi, the command looks like this:
 ```sh
-gurobi_cl ResultFile=/result/file.sol Threads=8 LPFile.lp
+gurobi_cl ResultFile=output/file.sol Threads=8 output/file.lp
 ``` 
+
+Alternatively, running `make gurobi` will run Gurobi over all existing `.lp` files in the `output` directory.
 
 
 ## Figure generation
-After the generation of the solution file (.sol file), use the python script *Figure_generation/BeautifulBoomerang.py* to generate the latex figure (without tweakey differences instantiation for now). 
+
+After the generation of the solution file (`.sol` file), use the python script `make_figure.py` to generate the LaTeX figure (without tweakey differences instantiation for now). 
 
 ```sh
-python3 BeautifulBoomerang.py /result/file.sol U L > Figure.tex
+python3 make_figure.py output/file.sol ⟨U⟩ ⟨L⟩ > output/Figure.tex
 ``` 
 
-Where U and L are the same arguments than those used for the generation of the MILP files. 
+Where ⟨U⟩ and ⟨L⟩ are the same arguments than those used for the generation of the MILP files. 
 
 Then, compile the latex file:
 
 ```sh
 pdflatex Figure.tex
 ```
+Non standard packages needed for the compilation of the latex file are in the `output` folder.
 
-Every non standard package needed for the compilation of the latex file is in the folder.
-
-The figure *Figure.pdf* is generated.
+The figure `Figure.pdf` is generated.
 
 ## Tweakey instantiation
-The sage source code *Tweakey_differences_instantiation/trail.sage* can be modified to generate the optimal tweakey differences of a particular trail. For this, find the constraints of the tweakey in the trail, write them down as shown in the code, modify the main function and execute the command:
+The sage source code `Instantiate_diff.sage` can be modified to generate the optimal tweakey differences of a particular trail. For this, find the constraints of the tweakey in the trail, write them down as shown in the code, modify the main function and execute the command:
 
 ```sh
-sage trail.sage ../outputkey
+sage Instantiate_diff.sage outputkey
 ```
 
 This will write concrete tweakey differences in the file *outputkey*.
 The figure generation script can take the path to this file as an extra input:
 
 ```sh
-python3 BeautifulBoomerang.py /result/file.sol U L ../outputkey > Figure.tex
+python3 make_figure output/file.sol ⟨U⟩ ⟨L⟩ outputkey > output/Figure.tex
 ```
 
-
-This instantiates the key values on the figure *Figure.pdf* after compiling with `pdflatex`. The rest needs to be done by hand.
-
-
+This instantiates the key values on the figure `Figure.pdf` after compiling with `pdflatex`. The rest needs to be done by hand.

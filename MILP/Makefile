@@ -10,7 +10,11 @@ build: ${BIN}
 
 gurobi: ${SOLFILES}
 
-figures: ${PDFFILES}
+pdf: ${PDFFILES}
+
+test: build
+	./Deoxys_boomerang 3 3 0 0
+	$(MAKE) pdf
 
 %.sol: %.lp
 	gurobi_cl ResultFile=$@ Threads=8 $<
@@ -24,4 +28,4 @@ figures: ${PDFFILES}
 clean:
 	rm -f ${BIN}
 
-.PHONY: build run_gurobi
+.PHONY: build gurobi pdf test
