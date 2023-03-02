@@ -740,7 +740,7 @@ int main(int argc, char** argv){
     fi=fopen(filename,"wt");
 
 	fprintf(fi,"Minimize\n"); /* print objective function */
-	fprintf(fi,"timecomplexity\n");
+	fprintf(fi,"datacomplexity\n");
 
 	fprintf(fi,"Subject To\n"); /* proba def */
 	// proba = proba of lower trail * proba of upper trail * proba of the boomerang switch
@@ -830,8 +830,8 @@ int main(int argc, char** argv){
 	// It happens with probability p^2
 	//
 	// => A random counter is incremented with N = (prand) * 2^{2 ll - 2 lk - 2 laa} * 2^{2 ul - 2 uk - 2 uaa} while a correct counter is incremented proba time
-	// The signal-to-noise ratio = N/proba = sigma
-	// Complexity = 1/proba * min(1,sigma) 
+	// The signal-to-noise ratio = N/proba >= 1
+	// Complexity = 1/proba 
 
 	//ll
 	for (i = 16*(rl-1); i < 16*rl-1; i++) fprintf(fi,"8 lzt%i + ",i);
@@ -869,32 +869,29 @@ int main(int argc, char** argv){
 	fprintf(fi, "ufilter + 1000 ufilterbinary - 2 uk + 2 ul - 2 uaa <= 1000\n");
 
 	if(fromPlaintext){
-		// sigma = log(min(1,signal-to-noise)) 
-		fprintf(fi, "lfilter + ufilter - uproba + uprand - sigma >= 0 \n");
-		fprintf(fi, "sigma <= 0 \n");
-		// Il faut calculer cxté en data = N = proba - sigma
-		// sigma <= 0 fyi
-		fprintf(fi, "uproba - sigma - 2 structsize >= 0\n");
-		fprintf(fi, "uproba - sigma - structsize - datacomplexity = 0\n");
+		// signal-to-noise >= 1
+		fprintf(fi, "lfilter + ufilter - uproba + uprand >= 1 \n");
+		// Il faut calculer cxté en data = N = proba
+		fprintf(fi, "uproba - 2 structsize >= 0\n");
+		fprintf(fi, "uproba - structsize - datacomplexity = 0\n");
 	}
 
 	if(!fromPlaintext){
 		// filter condition
-		fprintf(fi, "lfilter + ufilter - lproba + lprand - sigma >= 0 \n");
-		fprintf(fi, "sigma <= 0 \n");
+		fprintf(fi, "lfilter + ufilter - lproba + lprand >= 1 \n");
 		// Il faut calculer cxté en data = N = proba * max(prand/proba,1) 
-		fprintf(fi, "lproba - sigma - 2 structsize >= 0\n");
-		fprintf(fi, "lproba - sigma - structsize - datacomplexity = 0\n");
+		fprintf(fi, "lproba - 2 structsize >= 0\n");
+		fprintf(fi, "lproba - structsize - datacomplexity = 0\n");
 	}
 
-	// Data complexity has been computed. Now compute time complexity
+	// Data complexity has been computed. Now compute time complexity. Time complexity is unused as such. To use it, replace datacomplexity with timecomplexity in the objective function.
 
 
 	if(fromPlaintext){
 		// 0. Start with:
-		// Q0 = upbroba - sigma pairs
+		// Q0 = upbroba pairs
 		// N0 = datacomplexity elements
-		fprintf(fi,"Q0 - uproba + sigma = 0\n");
+		fprintf(fi,"Q0 - uproba = 0\n");
 		fprintf(fi,"N0 - datacomplexity = 0\n");
 		
 
@@ -951,10 +948,10 @@ int main(int argc, char** argv){
 	if(!fromPlaintext){
 		
 		// 0. Start with:
-		// Q0 = lpbroba - sigma pairs
+		// Q0 = lpbroba pairs
 		// N0 = datacomplexity elements
 
-		fprintf(fi,"Q0 - lproba + sigma = 0\n");
+		fprintf(fi,"Q0 - lproba = 0\n");
 		fprintf(fi,"N0 - datacomplexity = 0\n");
 		
 
@@ -1464,7 +1461,6 @@ int main(int argc, char** argv){
 	}
 
 
-	fprintf(fi,"-256 <= sigma <= 0\n\n");
 	fprintf(fi,"-256 <= Q2i <= 256\n");
 
 
@@ -1512,8 +1508,6 @@ int main(int argc, char** argv){
 	fprintf(fi,"uaa\n\n");
 	fprintf(fi,"uk\n\n");
 	fprintf(fi,"ul\n\n");
-
-	fprintf(fi,"sigma\n\n");
 
 	for (i = 0; i < 4; i++) fprintf(fi,"lmcatswitch%i\n\n",i);
 	for (i = 0; i < 4; i++) fprintf(fi,"umcatswitch%i\n\n",i);
