@@ -1,7 +1,11 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <getopt.h>
+
 
 // In this code, the states are denoted differently from the paper, as:
 // xt{0-15} ---ATK---->   yt{0-15}   ----SB---->   zt{0-15}   ---SRMC--->   xt{16-31} ...     For truncated states
@@ -688,37 +692,83 @@ void MixColumnS(int a[4][4]){
 
 
 int main(int argc, char** argv){
-	int tk[4][4]; /* the bytes of the TWEAKEY state */
-	int a[4][4]; /* the bytes of the AES state */
-	int tmpindex;	
+	// Parameters
 	char isKiasu = 0;
-    ru = 5;
-	rl = 5;
-	// fromPlaintext = 1 if the trail starts from the plaintext and 0 if it starts from the ciphertext
 	char fromPlaintext = 0;
-
 	// if model=3, we are in the TK3 model, if model = 0, in the SK model etc.. (model is in {0,1,2,3})
 	char model = 3;
 
-	// truncKey enables the optimisation with truncated keys; For experimental purposes. Always set it to False
-	char allowTruncKey=0;
-
 	//upper trails and lower trails of respectively ru and rl rounds.
 	//In order to come up with such trails, we create differential trails of length rl+1 and ru+1
-	if(argc>4){
-        isKiasu = atoi(argv[1]);
-		ru = atoi(argv[2]);
-		rl = atoi(argv[3]);
-	}else{
-		printf("Usage: %s isKiasu? U L fP model\nisKiasu? is a boolean equal to 1 if the Kiasu model is accounted. In this case, the value of model is not taken into account.\nU is the number of upper rounds, L of lower rounds\nfP is a boolean equal to 1 iff the trail starts from plaintext\nmodel is the number of tweakey chunks controlled by the attacker\n",argv[0]);	
-		return 0;
+	ru = 5;
+	rl = 5;
+
+	// truncKey enables the optimisation with truncated keys; For experimental purposes. Always set it to False
+	char allowTruncKey=0;
+	
+	struct option long_opts[] = {
+		{ "kiasu", 0, NULL, 'k' },
+		{ "deoxys", 1, NULL, 'd' },
+		{ "plaintext", 0, NULL, 'p' },
+		{ "ciphertext", 0, NULL, 'c' },
+		{ "help", 0, NULL, 'h' },
+		{ 0 },
+	};
+
+	int opt;
+	while ((opt = getopt_long(argc, argv, "cpkhd:", long_opts, NULL)) != -1) {
+		switch (opt) {
+		case 'c':
+			fromPlaintext = 0;
+			break;
+		case 'p':
+			fromPlaintext = 1;
+			break;
+		case 'k':
+			isKiasu = 1;
+			break;
+		case 'd':
+			isKiasu = 0;
+			model = atoi(optarg);
+			break;
+		default:
+			printf ("Error processing options\n");
+		case 'h':
+			goto USAGE;
 		}
-	if(argc>4){
-		fromPlaintext = atoi(argv[4]);
 	}
-	if(argc>5){
-		model = atoi(argv[5]);
+
+
+	int tk[4][4]; /* the bytes of the TWEAKEY state */
+	int a[4][4]; /* the bytes of the AES state */
+	int tmpindex;	
+
+
+
+	if (argc == optind+2) {
+		ru = atoi(argv[optind++]);
+		rl = atoi(argv[optind++]);
 	}
+	if (argc != optind) {
+	USAGE:
+		printf("Usage: %s [OPTIONS] [U L]\n"
+		       "  -d, --deoxys=i    Deoxys with model RTK<i>\n"
+		       "  -k, --kiasu       Kiasu\n"
+		       "  -p, --plaintext   Boomerang starting from plaintext\n"
+		       "  -c, --ciphertext  Boomerang starting from ciphertext\n"
+		       "  -h, --help        Give this help message\n"
+		       "  U L               Boomerang with <U> upper rounds and <L> lower rounds\n"
+		       ,argv[0]);
+		return 0;
+	} else {
+		printf ("Building model for ");
+		if (isKiasu)
+			printf ("Kiasu");
+		else
+			printf ("Deoxys RTK%i", model);
+		printf ("\n  Starting from %s\n", fromPlaintext? "plaintext": "ciphertext");
+		printf ("  Rounds: %i (upper) +  %i (lower)\n", ru, rl);
+	}		
 	
 
 	// Deduce file name

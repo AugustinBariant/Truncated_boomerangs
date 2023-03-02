@@ -13,11 +13,11 @@ gurobi: ${SOLFILES}
 pdf: ${PDFFILES}
 
 test: build
-	./Truncated_boomerang_MILP 0 3 3 1 0
+	./Truncated_boomerang_MILP 3 3 -d0
 	$(MAKE) pdf
 
 %.sol: %.lp
-	gurobi_cl ResultFile=$@ Threads=8 $<
+	gurobi_cl ResultFile=$@ $<
 
 %.tex: %.sol
 	./make_figure.py $< `echo $<| sed -e 's/.*_\(.\)R_\(.\)R.sol/\1\n\2/'` > $@
