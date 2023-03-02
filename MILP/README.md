@@ -12,7 +12,7 @@ There are several steps to generate parameters for a boomerang attack:
 
 The provided `Makefile` should automate part of the work:
 - running `make build` or `make` will compile the programs
-- running `make test` will run the search for a 6-round bommerang attack from plaintext against AES and generate a PDF figure. Warning: gurobi takes more than ten minutes to solve the model.
+- running `make test` will run the search for a 6-round bommerang attack from plaintext against AES and generate a PDF figure. Warning: gurobi takes around 5 minutes to solve the model with 8 threads.
 - for a given set of parameters, you can run step 1 manually (for instance `Deoxys_boomerang 5 6 0 3` for an attack against 11-round Deoxys in the RTK3 model), and run `make pdf` to run steps 2 and 3.
 
 ## MILP model generation
