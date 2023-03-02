@@ -12,17 +12,23 @@ There are several steps to generate parameters for a boomerang attack:
 
 The provided `Makefile` should automate part of the work:
 - running `make build` or `make` will compile the programs
-- running `make test` will run the search for a 6-round bommerang attack against AES and generate a PDF figure. Warning: gurobi takes more than ten minutes to solve the model.
+- running `make test` will run the search for a 6-round bommerang attack from plaintext against AES and generate a PDF figure. Warning: gurobi takes more than ten minutes to solve the model.
 - for a given set of parameters, you can run step 1 manually (for instance `Deoxys_boomerang 5 6 0 3` for an attack against 11-round Deoxys in the RTK3 model), and run `make pdf` to run steps 2 and 3.
 
 ## MILP model generation
 
 To generate the MILP model run the executable:
 ```sh
-./Truncated_boomerang_MILP ⟨isKiasu⟩ ⟨U⟩ ⟨L⟩ ⟨fromPt⟩ ⟨i⟩
+./Truncated_boomerang_MILP [options] [U L] 
+        -d, --deoxys=i    Deoxys with model RTK<i>
+        -k, --kiasu       Kiasu
+        -p, --plaintext   Boomerang starting from plaintext
+        -c, --ciphertext  Boomerang starting from ciphertext
+        -h, --help        Give a help message
+        U L               Boomerang with <U> upper rounds and <L> lower rounds
 ```
 
-This will generate the MILP file for the search of a boomerang trail with ⟨U⟩ upper rounds, ⟨L⟩ lower rounds, starting from the Plaintext iff ⟨fromPT⟩≠0, with Kiasu tweakey schedule if ⟨isKiasu⟩≠0 or Deoxys tweakey schedule in the RTK⟨i⟩ model if ⟨isKiasu⟩=0 (the parameter ⟨i⟩ is ignored if ⟨isKiasu⟩≠0). The `.lp` file is generated in the `output/` folder. In total, the boomerang trail will reach ⟨U⟩+⟨L⟩ rounds (the upper and lower trails have each 1 extra round in the middle, which overlaps with the other's main trail).
+The `.lp` file is generated in the `output/` folder. In total, the boomerang trail will reach ⟨U⟩+⟨L⟩ rounds (the upper and lower trails have each 1 extra round in the middle, which overlaps with the other's main trail).
 
 
 ## MILP solving

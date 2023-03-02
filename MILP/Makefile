@@ -13,7 +13,7 @@ gurobi: ${SOLFILES}
 pdf: ${PDFFILES}
 
 test: build
-	./Truncated_boomerang_MILP 3 3 -d0
+	./Truncated_boomerang_MILP -d0 -p 3 3 
 	$(MAKE) pdf
 
 %.sol: %.lp
