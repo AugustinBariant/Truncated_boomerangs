@@ -528,31 +528,31 @@ def returnKey(i,ul):
     for k in range(16):
         l.append(dic[baseindex+str(i*16 +k)])
     return l
+if(False):
+    print("\\begin{scope}[yshift=-"+str(15)+"cm,xshift=32cm]")
+    for i in range(3):
+        l = returnKey(i,"u")
+        print("\\path (0,"+str(-7*i)+") node[anchor=west] {")
+        print("$\\Delta TK^"+str(i+1)+" =")
+        print("\\left[\\begin{smallmatrix}")
+        print("  \\mathtt{"+ l[0] +"} & \\mathtt{"+ l[4] +"} & \\mathtt{"+ l[8] +"} & \\mathtt{"+ l[12] +"}\\\\")
+        print("  \\mathtt{"+ l[1] +"} & \\mathtt{"+ l[5] +"} & \\mathtt{"+ l[9] +"} & \\mathtt{"+ l[13] +"}\\\\")
+        print("  \\mathtt{"+ l[2] +"} & \\mathtt{"+ l[6] +"} & \\mathtt{"+ l[10] +"} & \\mathtt{"+ l[14] +"}\\\\")
+        print("  \\mathtt{"+ l[3] +"} & \\mathtt{"+ l[7] +"} & \\mathtt{"+ l[11] +"} & \\mathtt{"+ l[15] +"}")
+        print("\\end{smallmatrix}\\right]$};")
 
-print("\\begin{scope}[yshift=-"+str(15)+"cm,xshift=32cm]")
-for i in range(3):
-    l = returnKey(i,"u")
-    print("\\path (0,"+str(-7*i)+") node[anchor=west] {")
-    print("$\\Delta TK^"+str(i+1)+" =")
-    print("\\left[\\begin{smallmatrix}")
-    print("  \\mathtt{"+ l[0] +"} & \\mathtt{"+ l[4] +"} & \\mathtt{"+ l[8] +"} & \\mathtt{"+ l[12] +"}\\\\")
-    print("  \\mathtt{"+ l[1] +"} & \\mathtt{"+ l[5] +"} & \\mathtt{"+ l[9] +"} & \\mathtt{"+ l[13] +"}\\\\")
-    print("  \\mathtt{"+ l[2] +"} & \\mathtt{"+ l[6] +"} & \\mathtt{"+ l[10] +"} & \\mathtt{"+ l[14] +"}\\\\")
-    print("  \\mathtt{"+ l[3] +"} & \\mathtt{"+ l[7] +"} & \\mathtt{"+ l[11] +"} & \\mathtt{"+ l[15] +"}")
-    print("\\end{smallmatrix}\\right]$};")
+    for i in range(3):
+        l = returnKey(i,"l")
+        print("\\path (16,"+str(-7*i)+") node[anchor=west] {")
+        print("$\\nabla TK^"+str(i+1)+" =")
+        print("\\left[\\begin{smallmatrix}")
+        print("  \\mathtt{"+ l[0] +"} & \\mathtt{"+ l[4] +"} & \\mathtt{"+ l[8] +"} & \\mathtt{"+ l[12] +"}\\\\")
+        print("  \\mathtt{"+ l[1] +"} & \\mathtt{"+ l[5] +"} & \\mathtt{"+ l[9] +"} & \\mathtt{"+ l[13] +"}\\\\")
+        print("  \\mathtt{"+ l[2] +"} & \\mathtt{"+ l[6] +"} & \\mathtt{"+ l[10] +"} & \\mathtt{"+ l[14] +"}\\\\")
+        print("  \\mathtt{"+ l[3] +"} & \\mathtt{"+ l[7] +"} & \\mathtt{"+ l[11] +"} & \\mathtt{"+ l[15] +"}")
+        print("\\end{smallmatrix}\\right]$};")
 
-for i in range(3):
-    l = returnKey(i,"l")
-    print("\\path (16,"+str(-7*i)+") node[anchor=west] {")
-    print("$\\nabla TK^"+str(i+1)+" =")
-    print("\\left[\\begin{smallmatrix}")
-    print("  \\mathtt{"+ l[0] +"} & \\mathtt{"+ l[4] +"} & \\mathtt{"+ l[8] +"} & \\mathtt{"+ l[12] +"}\\\\")
-    print("  \\mathtt{"+ l[1] +"} & \\mathtt{"+ l[5] +"} & \\mathtt{"+ l[9] +"} & \\mathtt{"+ l[13] +"}\\\\")
-    print("  \\mathtt{"+ l[2] +"} & \\mathtt{"+ l[6] +"} & \\mathtt{"+ l[10] +"} & \\mathtt{"+ l[14] +"}\\\\")
-    print("  \\mathtt{"+ l[3] +"} & \\mathtt{"+ l[7] +"} & \\mathtt{"+ l[11] +"} & \\mathtt{"+ l[15] +"}")
-    print("\\end{smallmatrix}\\right]$};")
-
-print("\\end{scope}")
+    print("\\end{scope}")
 
 i=0
 def printLineifInDic(Name, key):
