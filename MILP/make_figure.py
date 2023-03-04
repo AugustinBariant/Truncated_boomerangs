@@ -5,51 +5,17 @@ from pickle import SHORT_BINSTRING
 import sys
 #Call python3 BeautifulBoomerang.py solname r1 r2 (keyvalue.file)
 filename = "Deoxys_TK3_6R.sol"
-r1 = 4
-r2 = 4
+r1 = 0
+r2 = 0
 filename2 = ""
 if(__name__=="__main__"):
     if len(sys.argv) >=2:
         filename = sys.argv[1]
-    if len(sys.argv) >=3:
-        r1 = int(sys.argv[2])
-    if len(sys.argv) >=4:
-        r2 = int(sys.argv[3])
     # Filename2 is the name of the file containing the values of the tweakey differences
-    if(len(sys.argv) >=5):
-        filename2 = sys.argv[4]
+    if(len(sys.argv) >=3):
+        filename2 = sys.argv[2]
 
 dic = {}
-#Initialise dic
-for i in range((r1+1)*16):
-    dic["ux"+str(i)] = 0
-    dic["uxt"+str(i)] = 0
-    dic["uy"+str(i)] = 0
-    dic["uyt"+str(i)] = 0
-    dic["uzt"+str(i)] = 0
-    dic["utk"+str(i)] = 0
-    dic["uye"+str(i)] = 0
-    dic["uze"+str(i)] = 0
-    dic["ute"+str(i)] = 0
-    dic["uxe"+str(i)] = 0
-    dic["utkv"+str(i)] = "00"
-
-for i in range((r2+1)*16):
-    dic["lx"+str(i)] = 0
-    dic["lxt"+str(i)] = 0
-    dic["ly"+str(i)] = 0
-    dic["lyt"+str(i)] = 0
-    dic["lzt"+str(i)] = 0
-    dic["ltk"+str(i)] = 0
-    dic["lye"+str(i)] = 0
-    dic["lze"+str(i)] = 0
-    dic["lte"+str(i)] = 0
-    dic["lxe"+str(i)] = 0
-    dic["ltkv"+str(i)] = "00"
-
-for i in range((r2+1)*16,(r2+2)*16):
-    dic["ltkv"+str(i)] = "00"
-    dic["ltk"+str(i)] = 0
 
 
 for i in range(48):
@@ -76,6 +42,7 @@ def is_float(val):
 
 equal = False
 # dic["x1"]= value of x1 in the solution
+# Also determine r1 and r2 from the content of the file.
 with open(filename,"r") as f:
     for l in f:
         val = l.split(" ")
@@ -85,6 +52,55 @@ with open(filename,"r") as f:
             #In case of imprecisions of symphony
             if(float(val[1])>int(float(val[1]))+0.95):
                 dic[val[0]] = int(float(val[1])) + 1
+        #Check for d in the string
+        number = 0
+        sub_string_digit = "".join([i for i in val[0] if i.isdigit()])
+        if sub_string_digit != "":
+            number = int(sub_string_digit)
+        if val[0][0] == "u":
+            r1 = max(r1,number//16)
+        if val[0][0] == "l":
+            r2 = max(r2,number//16)
+
+def init_key(s, val = 0):
+    global dic
+    if s not in dic.keys():
+        dic[s] = val
+
+#Initialise non-initialized values dic
+for i in range((r1+1)*16):
+    init_key("ux"+str(i))
+    init_key("uxt"+str(i))
+    init_key("uy"+str(i))
+    init_key("uyt"+str(i))
+    init_key("uzt"+str(i))
+    init_key("utk"+str(i))
+    init_key("uye"+str(i))
+    init_key("uze"+str(i))
+    init_key("ute"+str(i))
+    init_key("uxe"+str(i))
+    init_key("utkt"+str(i))
+    init_key("utkv"+str(i),"00")
+
+for i in range((r2+1)*16):
+    init_key("lx"+str(i))
+    init_key("lxt"+str(i))
+    init_key("ly"+str(i))
+    init_key("lyt"+str(i))
+    init_key("lzt"+str(i))
+    init_key("ltk"+str(i))
+    init_key("lye"+str(i))
+    init_key("lze"+str(i))
+    init_key("lte"+str(i))
+    init_key("lxe"+str(i))
+    init_key("ltkt"+str(i))
+    init_key("ltkv"+str(i),"00")
+
+for i in range((r2+1)*16,(r2+2)*16):
+    init_key("ltkv"+str(i),"00")
+    init_key("ltk"+str(i))
+    init_key("ltkt"+str(i))
+
 if(filename2 != ""):
     with open(filename2,"r") as f:
         for l in f:
@@ -566,7 +582,6 @@ print("\\path (current bounding box.north east) +(5,5);")
 print("\\path (current bounding box.south west) +(-5,-5);")
 print("""\\end{tikzpicture}""")
 print("\\end{document}")
-
 
 
 '''for i in range(32):

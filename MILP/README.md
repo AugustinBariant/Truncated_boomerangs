@@ -61,17 +61,16 @@ Non standard packages needed for the compilation of the latex file are in the `o
 The figure `Figure.pdf` is generated.
 
 ## Tweakey instantiation
-The sage source code `Instantiate_diff.sage` can be modified to generate the optimal tweakey differences of a particular trail. For this, find the constraints of the tweakey in the trail, write them down as shown in the code, modify the main function and execute the command:
+The sage source code `Instantiate_diff.sage` provides tools to generate the optimal tweakey differences of a particular trail, together with an example of optimal tweakey generation for the 12-round attack on Deoxys-BC in the RTK3 model of the paper (available in the full version on eprint). The following command will write the optimal tweakey differences in the file `output/Deoxys_TK3_boomerang_fromCiphertext_5R_7R_tweakeyvalues.txt` (hardcoded in the script):
 
 ```sh
-sage Instantiate_diff.sage outputkey
+sage Instantiate_diff.sage
 ```
 
-This will write concrete tweakey differences in the file *outputkey*.
-The figure generation script can take the path to this file as an extra input:
+The code can be modified to generate optimal tweakey differences for other trails. The figure generation script can take the path to the optimal tweakey difference file *outputkey* as an extra input:
 
 ```sh
-python3 make_figure output/file.sol ⟨U⟩ ⟨L⟩ outputkey > output/Figure.tex
+python3 make_figure output/file.sol outputkey > output/Figure.tex
 ```
 
 This instantiates the key values on the figure `Figure.pdf` after compiling with `pdflatex`. The rest needs to be done by hand.

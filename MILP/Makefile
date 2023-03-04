@@ -20,7 +20,7 @@ test: build
 	gurobi_cl ResultFile=$@ $<
 
 %.tex: %.sol
-	./make_figure.py $< `echo $<| sed -e 's/.*_\(.\)R_\(.\)R.sol/\1\n\2/'` > $@
+	./make_figure.py $< > $@
 
 %.pdf: %.tex
 	(cd output; pdflatex ${<:output/%=%})
