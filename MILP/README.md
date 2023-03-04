@@ -4,9 +4,9 @@
 There are several steps to generate parameters for a boomerang attack:
 1. Generate the MILP model with `Truncated_boomerang_MILP`
 2. Solve the model (with Gurobi)
-3. (optional) Generate a figure to visualize the trail using `make_figure`
-4. Instanciate the differences.  The requires some manual work, starting from `Instantiate_diff.sage`
-5. (optional) Generate a figure with instanciated values using `make_figure`
+3. (optional) Generate a figure to visualize the trail using `make_figure.py`
+4. Instanciate the differences.  The requires some manual work, starting from `Instantiate_diff.sage`. An instantiation example is given inside the script.
+5. (optional) Generate a figure with instanciated values using `make_figure.py`
 
 ## Compilation
 
@@ -24,6 +24,7 @@ To generate the MILP model run the executable:
         -k, --kiasu       Kiasu
         -p, --plaintext   Boomerang starting from plaintext
         -c, --ciphertext  Boomerang starting from ciphertext
+        -t, --time        Minimize the time complexity instead of the data complexity (experimental)
         -h, --help        Give a help message
         U L               Boomerang with <U> upper rounds and <L> lower rounds
 ```
@@ -46,14 +47,13 @@ Alternatively, running `make gurobi` will run Gurobi over all existing `.lp` fil
 After the generation of the solution file (`.sol` file), use the python script `make_figure.py` to generate the LaTeX figure (without tweakey differences instantiation for now). 
 
 ```sh
-python3 make_figure.py output/file.sol ⟨U⟩ ⟨L⟩ > output/Figure.tex
+python3 make_figure.py output/file.sol > output/Figure.tex
 ``` 
-
-Where ⟨U⟩ and ⟨L⟩ are the same arguments than those used for the generation of the MILP files. 
 
 Then, compile the latex file:
 
 ```sh
+cd output
 pdflatex Figure.tex
 ```
 Non standard packages needed for the compilation of the latex file are in the `output` folder.
@@ -61,16 +61,16 @@ Non standard packages needed for the compilation of the latex file are in the `o
 The figure `Figure.pdf` is generated.
 
 ## Tweakey instantiation
-The sage source code `Instantiate_diff.sage` provides tools to generate the optimal tweakey differences of a particular trail, together with an example of optimal tweakey generation for the 12-round attack on Deoxys-BC in the RTK3 model of the paper (available in the full version on eprint). The following command will write the optimal tweakey differences in the file `output/Deoxys_TK3_boomerang_fromCiphertext_5R_7R_tweakeyvalues.txt` (hardcoded in the script):
+The sage source code `Instantiate_diff.sage` provides tools to generate the optimal tweakey differences of a particular trail, together with an example of optimal tweakey generation for the 12-round attack on Deoxys-BC in the RTK3 model of the paper (available in the full version on eprint). The following command will write the optimal tweakey differences in the file `output/Deoxys_TK3_boomerang_fromCiphertext_5R_7R_tweakeyvalues.txt`:
 
 ```sh
 sage Instantiate_diff.sage
 ```
 
-The code can be modified to generate optimal tweakey differences for other trails. The figure generation script can take the path to the optimal tweakey difference file *outputkey* as an extra input:
+The code can be modified to generate optimal tweakey differences for other trails. The figure generation script can take the path to the optimal tweakey difference file `outputkey.txt` as an extra input:
 
 ```sh
-python3 make_figure output/file.sol outputkey > output/Figure.tex
+python3 make_figure output/file.sol outputkey.txt > output/Figure.tex
 ```
 
 This instantiates the key values on the figure `Figure.pdf` after compiling with `pdflatex`. The rest needs to be done by hand.

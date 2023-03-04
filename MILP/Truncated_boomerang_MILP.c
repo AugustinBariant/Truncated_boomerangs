@@ -43,7 +43,7 @@ int snext;
 
 const int KEYROTATE[16] = {1,6,11,12, 5,10,15,0, 9,14,3,4, 13,2,7,8};
 FILE *fi;
-char filename[100];
+char filename[150];
 
 void AddTweakeyL(int a[4][4], int tk[4][4]){
 	//In1 In2 Out Cancel
@@ -703,6 +703,8 @@ int main(int argc, char** argv){
 	ru = 5;
 	rl = 5;
 
+	char minimize_time_complexity = 0;
+
 	// truncKey enables the optimisation with truncated keys; For experimental purposes. Always set it to False
 	char allowTruncKey=0;
 	
@@ -711,12 +713,13 @@ int main(int argc, char** argv){
 		{ "deoxys", 1, NULL, 'd' },
 		{ "plaintext", 0, NULL, 'p' },
 		{ "ciphertext", 0, NULL, 'c' },
+		{ "timecomplexity", 0, NULL, 't' },
 		{ "help", 0, NULL, 'h' },
 		{ 0 },
 	};
 
 	int opt;
-	while ((opt = getopt_long(argc, argv, "cpkhd:", long_opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "cpktd:h", long_opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			fromPlaintext = 0;
@@ -726,6 +729,9 @@ int main(int argc, char** argv){
 			break;
 		case 'k':
 			isKiasu = 1;
+			break;
+		case 't':
+			minimize_time_complexity = 1;
 			break;
 		case 'd':
 			isKiasu = 0;
@@ -756,6 +762,7 @@ int main(int argc, char** argv){
 		       "  -k, --kiasu       Kiasu\n"
 		       "  -p, --plaintext   Boomerang starting from plaintext\n"
 		       "  -c, --ciphertext  Boomerang starting from ciphertext\n"
+			   "  -t, --time        Minimize time instead of data complexity (experimental)\n"
 		       "  -h, --help        Give this help message\n"
 		       "  U L               Boomerang with <U> upper rounds and <L> lower rounds\n"
 		       ,argv[0]);
@@ -766,6 +773,7 @@ int main(int argc, char** argv){
 			printf ("Kiasu");
 		else
 			printf ("Deoxys RTK%i", model);
+		printf ("\n  Minimizing %s", minimize_time_complexity? "time complexity": "data complexity");
 		printf ("\n  Starting from %s\n", fromPlaintext? "plaintext": "ciphertext");
 		printf ("  Rounds: %i (upper) +  %i (lower)\n", ru, rl);
 	}		
@@ -784,13 +792,24 @@ int main(int argc, char** argv){
 	char* side = "Cipher";
 	if(fromPlaintext) side = "Plain";
 	
+	char* time_str = "time_complexity_";
+	if (!minimize_time_complexity){
+		time_str = "";
+	}
+
 	mkdir("output", 0777);
-	sprintf(filename,"output/%s_boomerang_from%stext%s_%dR_%dR.lp",algo,side,s2,ru,rl);
+
+	sprintf(filename,"output/%s_boomerang_%sfrom%stext%s_%dR_%dR.lp",algo,time_str,side,s2,ru,rl);
 
     fi=fopen(filename,"wt");
 
 	fprintf(fi,"Minimize\n"); /* print objective function */
-	fprintf(fi,"timecomplexity\n");
+	if(minimize_time_complexity){
+		fprintf(fi,"timecomplexity\n");
+	}else{
+		fprintf(fi,"datacomplexity\n");
+	}
+	
 
 	fprintf(fi,"Subject To\n"); /* proba def */
 	// proba = proba of lower trail * proba of upper trail * proba of the boomerang switch
@@ -1064,10 +1083,10 @@ int main(int argc, char** argv){
 	// In the middle rounds, if a column is already switch, it costs nothing to put active differences into it.
 	// In the middle rounds, we won't allow 4 active truncated columns if the state is not switched.
 	// However, we allow the MixColumn at the first/last round to be full truncated, since it can be compen
-	for(i = 1; i < ru-1 ; i++){
+	for(i = 1; i < ru ; i++){
 		fprintf(fi, "udt%i + udt%i + udt%i + udt%i <= 3\n", 4*i, 4*i + 1, 4*i + 2, 4*i + 3);
 	}
-	for(i = 1; i < rl-1; i++){
+	for(i = 0; i < rl-1; i++){
 		fprintf(fi, "ldt%i + ldt%i + ldt%i + ldt%i <= 3\n", 4*i, 4*i + 1, 4*i + 2, 4*i + 3);
 	}
 	
