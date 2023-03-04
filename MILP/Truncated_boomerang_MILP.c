@@ -713,7 +713,7 @@ int main(int argc, char** argv){
 		{ "deoxys", 1, NULL, 'd' },
 		{ "plaintext", 0, NULL, 'p' },
 		{ "ciphertext", 0, NULL, 'c' },
-		{ "timecomplexity", 0, NULL, 't' },
+		{ "time", 0, NULL, 't' },
 		{ "help", 0, NULL, 'h' },
 		{ 0 },
 	};
